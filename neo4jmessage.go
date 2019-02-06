@@ -57,13 +57,13 @@ type Neo4jMessage struct {
 	Payload Neo4jPayload `json:"payload"`
 }
 
-func (p *Neo4jMessage) ToNodeNotification() (*NodeNotification, error) {
+func (p *Neo4jMessage) ToNodeContext() (*NodeContext, error) {
 	id, err := strconv.ParseUint(p.Payload.ID, 10, 64)
 	if err != nil {
 		return nil, errors.Annotate(err, "ParseUint [id]")
 	}
 
-	n := NodeNotification{
+	n := NodeContext{
 		NodeID:      id,
 		ChangeInfos: make(ChangeInfos),
 		Operation:   p.Meta.Operation,

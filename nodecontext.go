@@ -3,6 +3,8 @@ package nksh
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
 
 type ChangeInfo struct {
@@ -79,15 +81,16 @@ func (p ChangeInfos) Deleted(field string) bool {
 	return false
 }
 
-type NodeNotification struct {
-	TimeStamp   time.Time       `json:"time_stamp"`
-	Operation   string          `json:"operation"`
-	NodeID      uint64          `json:"node_id"`
-	ChangeInfos ChangeInfos     `json:"change_infos"`
-	Properties  Neo4jProperties `json:"properties"`
+type NodeContext struct {
+	Neo4jSession neo4j.Session   `json:"-"`
+	TimeStamp    time.Time       `json:"time_stamp"`
+	Operation    string          `json:"operation"`
+	NodeID       uint64          `json:"node_id"`
+	ChangeInfos  ChangeInfos     `json:"change_infos"`
+	Properties   Neo4jProperties `json:"properties"`
 }
 
-func (p *NodeNotification) Match(
+func (p *NodeContext) Match(
 
 	operation string,
 	fieldName string,
@@ -111,7 +114,7 @@ func (p *NodeNotification) Match(
 	return p.Operation == operation
 }
 
-func (p *NodeNotification) buildChanges(before bool, props map[string]interface{}) {
+func (p *NodeContext) buildChanges(before bool, props map[string]interface{}) {
 	for field, value := range props {
 		if info, ok := p.ChangeInfos[field]; ok {
 			if before {
@@ -135,13 +138,13 @@ func (p *NodeNotification) buildChanges(before bool, props map[string]interface{
 	}
 }
 
-type NodeNotificationCodec struct{}
+type NodeContextCodec struct{}
 
-func (p *NodeNotificationCodec) Encode(value interface{}) ([]byte, error) {
+func (p *NodeContextCodec) Encode(value interface{}) ([]byte, error) {
 	return json.Marshal(value)
 }
 
-func (p *NodeNotificationCodec) Decode(data []byte) (interface{}, error) {
-	var m NodeNotification
+func (p *NodeContextCodec) Decode(data []byte) (interface{}, error) {
+	var m NodeContext
 	return &m, json.Unmarshal(data, &m)
 }

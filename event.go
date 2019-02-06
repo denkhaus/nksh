@@ -6,7 +6,7 @@ import (
 	"github.com/lovoo/goka"
 )
 
-type EventHandler func(ctx goka.Context, m *NodeNotification) error
+type EventHandler func(ctx goka.Context, m *NodeContext) error
 
 type ActionData struct {
 	Operation      string
@@ -18,7 +18,7 @@ type ActionData struct {
 	Not            []ActionData
 }
 
-func (p *ActionData) Match(m *NodeNotification) bool {
+func (p *ActionData) Match(m *NodeContext) bool {
 	result := m.Match(
 		p.Operation,
 		p.FieldName,
@@ -53,7 +53,7 @@ type Stage2 interface {
 }
 
 type EventAction interface {
-	ApplyMessage(ctx goka.Context, m *NodeNotification) error
+	ApplyMessage(ctx goka.Context, m *NodeContext) error
 }
 
 type chain builder.Builder
@@ -118,9 +118,18 @@ func (b chain) Do(fn EventHandler) EventAction {
 	return builder.Set(b, "HandleEvent", fn).(EventAction)
 }
 
-func (b chain) ApplyMessage(ctx goka.Context, m *NodeNotification) error {
+func (b chain) ApplyMessage(ctx goka.Context, m *NodeContext) error {
 	data := builder.GetStruct(b).(ActionData)
 	if data.Match(m) {
+
+		session, err := neo4jDriver.Session(neo4j.AccessModeWrite)
+		if err != nil {
+			return errors.Annotate(err, "Session")
+		}
+
+		defer session.Close()
+		m.Neo4jSession = session
+		
 		if err := data.HandleEvent(ctx, m); err != nil {
 			return errors.Annotate(err, "HandleEvent")
 		}

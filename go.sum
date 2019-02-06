@@ -27,6 +27,10 @@ github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 h1:P6pPBnrTSX3DEVR4fDembhR
 github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0/go.mod h1:vmVJ0l/dxyfGW6FmdpVm2joNMFikkuWg0EoCKLGUMNw=
 github.com/lovoo/goka v0.1.1 h1:cDXjbRIe8J8XeHRd7Vlc396U6Ob+OQoi0k7PCcl4vXk=
 github.com/lovoo/goka v0.1.1/go.mod h1:jycJV5w5O/zr22OJpE34lPNymbvDhiaoJ41shxKD8cQ=
+github.com/neo4j-drivers/gobolt v1.7.2 h1:TZwFL+CZCfu+nC8n83LkcoLMzbFYodg+MigwnxLUWr4=
+github.com/neo4j-drivers/gobolt v1.7.2/go.mod h1:O9AUbip4Dgre+CD3p40dnMD4a4r52QBIfblg5k7CTbE=
+github.com/neo4j/neo4j-go-driver v1.7.2 h1:lv7f8REuarVJipSBRCebwzKOzGIXH7m3XlXZIvnyOYM=
+github.com/neo4j/neo4j-go-driver v1.7.2/go.mod h1:aPO0vVr+WnhEJne+FgFjfsjzAnssPFLucHgGZ76Zb/U=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=

@@ -2,26 +2,28 @@ package nksh
 
 import (
 	"context"
-	"os"
-	"os/signal"
-	"syscall"
-	 "fmt"
-"strings"
+	"fmt"
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
 	"github.com/lovoo/goka/kafka"
-	"golang.org/x/sync/errgroup"
+	"github.com/neo4j/neo4j-go-driver/neo4j"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 )
 
 var (
+	neo4jDriver neo4j.Driver
 	log logrus.FieldLogger = logrus.New().WithField("package", "nksh")
 )
 
 type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func() error
 
+func Startup(kafkaHost, zookeeperHost string, neoDriver neo4j.Driver, runDispatcher DispatcherFunc) error {
 
-func Startup(kafkaHost, zookeeperHost string, runDispatcher DispatcherFunc) error {
 	kServers, err := LookupClusterHosts(kafkaHost, 9092)
 	if err != nil {
 		return errors.Annotate(err, "LookupClusterHosts [kafka]")
@@ -32,6 +34,7 @@ func Startup(kafkaHost, zookeeperHost string, runDispatcher DispatcherFunc) erro
 		return errors.Annotate(err, "LookupClusterHosts [zookeeper]")
 	}
 
+	neo4jDriver = neoDriver
 	ctx, cancel := context.WithCancel(context.Background())
 	grp, ctx := errgroup.WithContext(ctx)
 
@@ -58,7 +61,7 @@ func Startup(kafkaHost, zookeeperHost string, runDispatcher DispatcherFunc) erro
 }
 
 func handleEntityMessages(ctx goka.Context, msg interface{}, actions ...EventAction) error {
-	m, ok := msg.(*NodeNotification)
+	m, ok := msg.(*NodeContext)
 	if !ok {
 		return errors.Errorf("invalid message type %+v", msg)
 	}
@@ -76,7 +79,7 @@ func CreateEventDispatcher(group goka.Group, stream goka.Stream, actions ...Even
 	return func(ctx context.Context, kServers, zServers []string) func() error {
 		return func() error {
 			g := goka.DefineGroup(group,
-				goka.Input(stream, new(NodeNotificationCodec), func(ctx goka.Context, msg interface{}) {
+				goka.Input(stream, new(NodeContextCodec), func(ctx goka.Context, msg interface{}) {
 					if err := handleEntityMessages(ctx, msg, actions...); err != nil {
 						log.Error(errors.Annotate(err, "handleEntityMessages"))
 					}
@@ -100,7 +103,6 @@ func CreateEventDispatcher(group goka.Group, stream goka.Stream, actions ...Even
 		}
 	}
 }
-
 
 func SetLogger(logger logrus.FieldLogger) {
 	log = logger

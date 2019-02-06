@@ -1,4 +1,4 @@
-module bitbucket.org/denkhaus/nksh
+module github.com/denkhaus/nksh
 
 require (
 	github.com/DataDog/zstd v1.3.5 // indirect

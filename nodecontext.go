@@ -3,8 +3,6 @@ package nksh
 import (
 	"encoding/json"
 	"time"
-
-	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
 
 type ChangeInfo struct {
@@ -82,12 +80,11 @@ func (p ChangeInfos) Deleted(field string) bool {
 }
 
 type NodeContext struct {
-	Neo4jSession neo4j.Session   `json:"-"`
-	TimeStamp    time.Time       `json:"time_stamp"`
-	Operation    string          `json:"operation"`
-	NodeID       uint64          `json:"node_id"`
-	ChangeInfos  ChangeInfos     `json:"change_infos"`
-	Properties   Neo4jProperties `json:"properties"`
+	TimeStamp   time.Time       `json:"time_stamp"`
+	Operation   string          `json:"operation"`
+	NodeID      uint64          `json:"node_id"`
+	ChangeInfos ChangeInfos     `json:"change_infos"`
+	Properties  Neo4jProperties `json:"properties"`
 }
 
 func (p *NodeContext) Match(

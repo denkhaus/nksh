@@ -6,7 +6,6 @@ import (
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
 	"github.com/lovoo/goka/kafka"
-	"github.com/neo4j/neo4j-go-driver/neo4j"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"os"
@@ -16,14 +15,12 @@ import (
 )
 
 var (
-	neo4jDriver neo4j.Driver
 	log logrus.FieldLogger = logrus.New().WithField("package", "nksh")
 )
 
 type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func() error
 
-func Startup(kafkaHost, zookeeperHost string, neoDriver neo4j.Driver, runDispatcher DispatcherFunc) error {
-
+func Startup(kafkaHost, zookeeperHost string,  runDispatcher DispatcherFunc) error {
 	kServers, err := LookupClusterHosts(kafkaHost, 9092)
 	if err != nil {
 		return errors.Annotate(err, "LookupClusterHosts [kafka]")
@@ -34,7 +31,6 @@ func Startup(kafkaHost, zookeeperHost string, neoDriver neo4j.Driver, runDispatc
 		return errors.Annotate(err, "LookupClusterHosts [zookeeper]")
 	}
 
-	neo4jDriver = neoDriver
 	ctx, cancel := context.WithCancel(context.Background())
 	grp, ctx := errgroup.WithContext(ctx)
 

@@ -120,16 +120,10 @@ func (b chain) Do(fn EventHandler) EventAction {
 
 func (b chain) ApplyMessage(ctx goka.Context, m *NodeContext) error {
 	data := builder.GetStruct(b).(ActionData)
-	if data.Match(m) {
-
-		session, err := neo4jDriver.Session(neo4j.AccessModeWrite)
-		if err != nil {
-			return errors.Annotate(err, "Session")
+	if data.Match(m) {		
+		if data.HandleEvent == nil{
+			return errors.New("EventChain: handler func undefined")
 		}
-
-		defer session.Close()
-		m.Neo4jSession = session
-		
 		if err := data.HandleEvent(ctx, m); err != nil {
 			return errors.Annotate(err, "HandleEvent")
 		}

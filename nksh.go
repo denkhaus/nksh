@@ -74,15 +74,15 @@ func handleEntityMessages(ctx goka.Context, msg interface{}, actions ...EventAct
 	return nil
 }
 
-func CreateInputEventConsumer(group goka.Group, stream goka.Stream, actions ...EventAction) DispatcherFunc {
+func CreateInputEventConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...EventAction) DispatcherFunc {
 	return func(ctx context.Context, kServers, zServers []string) func() error {
 		return func() error {
 			g := goka.DefineGroup(group,
-				goka.Input(stream, new(NodeContextCodec), func(ctx goka.Context, msg interface{}) {
+				goka.Input(inputStream, new(NodeContextCodec), func(ctx goka.Context, msg interface{}) {
 					if err := handleEntityMessages(ctx, msg, actions...); err != nil {
 						log.Error(errors.Annotate(err, "handleEntityMessages"))
 					}
-				}),
+				}), goka.Output(outputStream, new(HubMessageCodec)),
 			)
 
 			p, err := goka.NewProcessor(kServers, g,
@@ -103,11 +103,12 @@ func CreateInputEventConsumer(group goka.Group, stream goka.Stream, actions ...E
 	}
 }
 
-func CreateHubConsumer(group goka.Group, stream goka.Stream, cb goka.ProcessCallback) DispatcherFunc {
+func CreateHubConsumer(group goka.Group, inputStream, outputStream goka.Stream, cb goka.ProcessCallback) DispatcherFunc {
 	return func(ctx context.Context, kServers, zServers []string) func() error {
 		return func() error {
 			g := goka.DefineGroup(group,
-				goka.Input(stream, new(HubMessageCodec), cb),
+				goka.Input(inputStream, new(HubMessageCodec), cb),
+				goka.Output(outputStream, new(HubMessageCodec)),
 			)
 
 			p, err := goka.NewProcessor(kServers, g,

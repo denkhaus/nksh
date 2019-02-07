@@ -3,6 +3,9 @@ package nksh
 import "encoding/json"
 
 type HubMessage struct {
+	Sender     string                 `json:"sender"`
+	Receiver   string                 `json:"receiver"`
+	Properties map[string]interface{} `json:"properties"`
 }
 
 type HubMessageCodec struct{}

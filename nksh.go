@@ -3,15 +3,16 @@ package nksh
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
 	"github.com/lovoo/goka/kafka"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
 )
 
 var (
@@ -20,7 +21,7 @@ var (
 
 type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func() error
 
-func Startup(kafkaHost, zookeeperHost string,  runDispatcher DispatcherFunc) error {
+func Startup(kafkaHost, zookeeperHost string, funcs ...DispatcherFunc) error {
 	kServers, err := LookupClusterHosts(kafkaHost, 9092)
 	if err != nil {
 		return errors.Annotate(err, "LookupClusterHosts [kafka]")
@@ -37,7 +38,9 @@ func Startup(kafkaHost, zookeeperHost string,  runDispatcher DispatcherFunc) err
 	log.Infof("startup with kafka hosts %v", kServers)
 	log.Infof("startup with zookeeper hosts %v", zServers)
 
-	grp.Go(runDispatcher(ctx, kServers, zServers))
+	for _, fn := range funcs {
+		grp.Go(fn(ctx, kServers, zServers))
+	}
 
 	waiter := make(chan os.Signal, 1)
 	signal.Notify(waiter, syscall.SIGINT, syscall.SIGTERM)

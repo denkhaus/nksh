@@ -74,7 +74,7 @@ func handleEntityMessages(ctx goka.Context, msg interface{}, actions ...EventAct
 	return nil
 }
 
-func CreateEventDispatcher(group goka.Group, stream goka.Stream, actions ...EventAction) DispatcherFunc {
+func CreateInputEventConsumer(group goka.Group, stream goka.Stream, actions ...EventAction) DispatcherFunc {
 	return func(ctx context.Context, kServers, zServers []string) func() error {
 		return func() error {
 			g := goka.DefineGroup(group,
@@ -83,6 +83,31 @@ func CreateEventDispatcher(group goka.Group, stream goka.Stream, actions ...Even
 						log.Error(errors.Annotate(err, "handleEntityMessages"))
 					}
 				}),
+			)
+
+			p, err := goka.NewProcessor(kServers, g,
+				goka.WithTopicManagerBuilder(
+					kafka.ZKTopicManagerBuilder(zServers),
+				),
+			)
+			if err != nil {
+				return errors.Annotate(err, "NewProcessor")
+			}
+
+			if err := p.Run(ctx); err != nil {
+				return errors.Annotate(err, "Run")
+			}
+
+			return nil
+		}
+	}
+}
+
+func CreateHubConsumer(group goka.Group, stream goka.Stream, cb goka.ProcessCallback) DispatcherFunc {
+	return func(ctx context.Context, kServers, zServers []string) func() error {
+		return func() error {
+			g := goka.DefineGroup(group,
+				goka.Input(stream, new(HubMessageCodec), cb),
 			)
 
 			p, err := goka.NewProcessor(kServers, g,

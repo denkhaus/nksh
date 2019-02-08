@@ -3,6 +3,7 @@ package nksh
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/signal"
 	"strings"
@@ -29,6 +30,10 @@ func (p Properties) MustGet(field string) interface{} {
 }
 
 type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func() error
+
+func ComposeKey(label string, id int64) string {
+	return fmt.Sprintf("%s-%d-%s", label, id, RandStringBytes(4))
+}
 
 func Startup(kafkaHost, zookeeperHost string, funcs ...DispatcherFunc) error {
 	kServers, err := LookupClusterHosts(kafkaHost, 9092)
@@ -156,4 +161,14 @@ func LookupClusterHosts(host string, port int, params ...string) ([]string, erro
 	}
 
 	return res, nil
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }

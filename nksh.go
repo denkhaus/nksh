@@ -6,8 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
-	"strings"
-	"syscall"
+	"syscall" 
 
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
@@ -147,21 +146,6 @@ func SetLogger(logger logrus.FieldLogger) {
 	log = logger
 }
 
-func LookupClusterHosts(host string, port int, params ...string) ([]string, error) {
-	ips, err := DNSLookupIP(host, 50)
-	if err != nil {
-		return nil, errors.Annotate(err, "DNSLookupIP")
-	}
-
-	res := []string{}
-	for _, ip := range ips {
-		res = append(res, fmt.Sprintf(
-			"%s:%d%s", ip, port, strings.Join(params, ""),
-		))
-	}
-
-	return res, nil
-}
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 

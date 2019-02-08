@@ -1,9 +1,12 @@
 package nksh
 
 import (
-	"errors"
+	"fmt"
 	"net"
+	"strings"
 	"time"
+
+	"github.com/juju/errors"
 )
 
 func validIPs(ips []net.IP) bool {
@@ -28,4 +31,20 @@ func DNSLookupIP(host string, retrys int) ([]net.IP, error) {
 	}
 
 	return nil, errors.New("no lookup results")
+}
+
+func LookupClusterHosts(host string, port int, params ...string) ([]string, error) {
+	ips, err := DNSLookupIP(host, 50)
+	if err != nil {
+		return nil, errors.Annotate(err, "DNSLookupIP")
+	}
+
+	res := []string{}
+	for _, ip := range ips {
+		res = append(res, fmt.Sprintf(
+			"%s:%d%s", ip, port, strings.Join(params, ""),
+		))
+	}
+
+	return res, nil
 }

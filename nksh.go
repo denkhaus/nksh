@@ -19,6 +19,15 @@ var (
 	log logrus.FieldLogger = logrus.New().WithField("package", "nksh")
 )
 
+type Properties map[string]interface{}
+
+func (p Properties) MustGet(field string) interface{} {
+	if val, ok := p[field]; ok {
+		return val
+	}
+	panic(fmt.Sprintf("Properties:MustGet: field %s undefined", field))
+}
+
 type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func() error
 
 func Startup(kafkaHost, zookeeperHost string, funcs ...DispatcherFunc) error {

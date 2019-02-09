@@ -35,13 +35,13 @@ type Neo4jPayload struct {
 }
 
 type Neo4jMeta struct {
-	Timestamp     int64       `json:"timestamp"`
-	Username      string      `json:"username"`
-	TxID          int         `json:"tx_id"`
-	TxEventID     int         `json:"tx_event_id"`
-	TxEventsCount int         `json:"tx_events_count"`
-	Operation     string      `json:"operation"`
-	Source        Neo4jSource `json:"source"`
+	Timestamp     int64            `json:"timestamp"`
+	Username      string           `json:"username"`
+	TxID          int              `json:"tx_id"`
+	TxEventID     int              `json:"tx_event_id"`
+	TxEventsCount int              `json:"tx_events_count"`
+	Operation     shared.Operation `json:"operation"`
+	Source        Neo4jSource      `json:"source"`
 }
 
 type Neo4jMessage struct {

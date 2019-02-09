@@ -7,23 +7,23 @@ import (
 )
 
 type Context struct {
-	SenderLabel   string            `json:"sender_label"`
-	SenderID      int64             `json:"sender_id"`
-	Operation     string            `json:"operation"`
-	ReceiverLabel string            `json:"receiver_label"`
-	ReceiverID    int64             `json:"receiver_id"`
-	Properties    shared.Properties `json:"properties"`
+	Sender     string            `json:"sender"`
+	SenderID   int64             `json:"sender_id"`
+	Operation  shared.Operation  `json:"operation"`
+	Receiver   string            `json:"receiver"`
+	ReceiverID int64             `json:"receiver_id"`
+	Properties shared.Properties `json:"properties"`
 }
 
 func (p *Context) Match(
-	operation string,
+	operation shared.Operation,
 	sender string,
 	condition ConditionFunc,
 
 ) bool {
 
 	if p.Operation == operation &&
-		sender == p.SenderLabel {
+		sender == p.Sender {
 		if condition != nil {
 			return condition(*p)
 		}

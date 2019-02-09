@@ -1,6 +1,7 @@
 package event
 
 import (
+	"github.com/denkhaus/nksh/shared"
 	"github.com/juju/errors"
 	"github.com/lann/builder"
 	"github.com/lovoo/goka"
@@ -9,8 +10,8 @@ import (
 type Handler func(ctx goka.Context, m *Context) error
 
 type ActionData struct {
-	Operation      string
-	FieldOperation string
+	Operation      shared.Operation
+	FieldOperation shared.Operation
 	FieldName      string
 	HandleEvent    Handler
 	Or             []ActionData

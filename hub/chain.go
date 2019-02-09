@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"github.com/denkhaus/nksh/shared"
 	"github.com/juju/errors"
 	"github.com/lann/builder"
 	"github.com/lovoo/goka"
@@ -10,7 +11,7 @@ type ConditionFunc func(c Context) bool
 type Handler func(ctx goka.Context, m *Context) error
 
 type ActionData struct {
-	Operation   string
+	Operation   shared.Operation
 	Sender      string
 	Condition   ConditionFunc
 	Or          []ActionData

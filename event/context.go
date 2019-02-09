@@ -83,7 +83,7 @@ func (p ChangeInfos) Deleted(field string) bool {
 
 type Context struct {
 	TimeStamp   time.Time         `json:"time_stamp"`
-	Operation   string            `json:"operation"`
+	Operation   shared.Operation  `json:"operation"`
 	NodeID      int64             `json:"node_id"`
 	ChangeInfos ChangeInfos       `json:"change_infos"`
 	Properties  shared.Properties `json:"properties"`
@@ -91,19 +91,19 @@ type Context struct {
 
 func (p *Context) Match(
 
-	operation string,
+	operation shared.Operation,
 	fieldName string,
-	fieldOperation string,
+	fieldOperation shared.Operation,
 
 ) bool {
 
-	if p.Operation == "updated" && p.Operation == operation {
+	if p.Operation == shared.UpdatedOperation && p.Operation == operation {
 		switch fieldOperation {
-		case "created":
+		case shared.CreatedOperation:
 			return p.ChangeInfos.Created(fieldName)
-		case "updated":
+		case shared.UpdatedOperation:
 			return p.ChangeInfos.Updated(fieldName)
-		case "deleted":
+		case shared.DeletedOperation:
 			return p.ChangeInfos.Deleted(fieldName)
 		default:
 			return false

@@ -56,6 +56,7 @@ func (p *Executor) enumerateSuperOrdinates(enumerate func(id int64, labels []int
 		MATCH (super)-[]->(p) 
 		WHERE id(p) = $id 
 		RETURN ID(super) as id, labels(super) as labels
+		
 		`,
 		map[string]interface{}{
 			"id": p.NodeID,
@@ -83,19 +84,19 @@ func (p *Executor) enumerateSuperOrdinates(enumerate func(id int64, labels []int
 	return nil
 }
 
-func (p *Executor) NotifySuperOrdinates(operation string, props shared.Properties) error {
+func (p *Executor) NotifySuperOrdinates(operation shared.Operation, props shared.Properties) error {
 	msg := hub.Context{
-		SenderLabel: p.NodeLabel,
-		Operation:   operation,
-		SenderID:    p.NodeID,
-		Properties:  props,
+		Sender:     p.NodeLabel,
+		Operation:  operation,
+		SenderID:   p.NodeID,
+		Properties: props,
 	}
 
 	p.enumerateSuperOrdinates(func(id int64, labels []interface{}) error {
 		for _, l := range labels {
 			label := l.(string)
 			msg.ReceiverID = id
-			msg.ReceiverLabel = label
+			msg.Receiver = label
 			p.Context.Emit(goka.Stream("Hub"), ComposeKey(label, id), msg)
 		}
 

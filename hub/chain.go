@@ -49,6 +49,7 @@ type Stage2 interface {
 
 type Stage3 interface {
 	With(fn ConditionFunc) Stage4
+	Do(fn Handler) Action
 }
 
 type Stage4 interface {

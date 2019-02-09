@@ -158,7 +158,7 @@ func RandStringBytes(n int) string {
 	return string(b)
 }
 
-func ConnectNeo4j() (neo4j.Driver, error) {
+func ConnectNeo4j(host string) (neo4j.Driver, error) {
 	log.Info("connect neo4j")
 
 	user := os.Getenv("NEO4J_USERNAME")
@@ -171,7 +171,7 @@ func ConnectNeo4j() (neo4j.Driver, error) {
 		return nil, errors.New("Neo4j password undefined")
 	}
 
-	driver, err := neo4j.NewDriver(fmt.Sprintf("bolt://%s:7687", *nHost),
+	driver, err := neo4j.NewDriver(fmt.Sprintf("bolt://%s:7687", host),
 		neo4j.BasicAuth(user, password, ""),
 	)
 

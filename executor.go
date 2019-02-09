@@ -17,18 +17,14 @@ var (
 )
 
 type Executor struct {
-	Driver    neo4j.Driver
-	Context   goka.Context
-	NodeLabel string
-	NodeID    int64
+	Driver  neo4j.Driver
+	Context goka.Context
 }
 
-func NewExecutor(ctx goka.Context, nodeLabel string, nodeID int64, driver neo4j.Driver) *Executor {
+func NewExecutor(ctx goka.Context, driver neo4j.Driver) *Executor {
 	ex := Executor{
-		Driver:    driver,
-		NodeID:    nodeID,
-		Context:   ctx,
-		NodeLabel: nodeLabel,
+		Driver:  driver,
+		Context: ctx,
 	}
 
 	return &ex
@@ -43,7 +39,13 @@ func (p *Executor) newSession() (neo4j.Session, error) {
 	return session, nil
 }
 
-func (p *Executor) enumerateSuperOrdinates(enumerate func(id int64, labels []interface{}) error) error {
+func (p *Executor) enumerateSuperOrdinates(
+
+	senderID int64,
+	enumerate func(id int64, labels []interface{}) error,
+
+) error {
+
 	session, err := p.newSession()
 	if err != nil {
 		return errors.Annotate(err, "newSession")
@@ -56,10 +58,10 @@ func (p *Executor) enumerateSuperOrdinates(enumerate func(id int64, labels []int
 		MATCH (super)-[]->(p) 
 		WHERE id(p) = $id 
 		RETURN ID(super) as id, labels(super) as labels
-		
+
 		`,
 		map[string]interface{}{
-			"id": p.NodeID,
+			"id": senderID,
 		})
 
 	if err != nil {
@@ -84,19 +86,26 @@ func (p *Executor) enumerateSuperOrdinates(enumerate func(id int64, labels []int
 	return nil
 }
 
-func (p *Executor) NotifySuperOrdinates(operation shared.Operation, props shared.Properties) error {
+func (p *Executor) NotifySuperOrdinates(
+
+	sender string,
+	senderID int64,
+	operation shared.Operation,
+	props shared.Properties,
+
+) error {
 	msg := hub.Context{
-		Sender:     p.NodeLabel,
+		Sender:     sender,
 		Operation:  operation,
-		SenderID:   p.NodeID,
+		SenderID:   senderID,
 		Properties: props,
 	}
 
-	p.enumerateSuperOrdinates(func(id int64, labels []interface{}) error {
+	p.enumerateSuperOrdinates(senderID, func(id int64, labels []interface{}) error {
 		for _, l := range labels {
 			label := l.(string)
-			msg.ReceiverID = id
 			msg.Receiver = label
+			msg.ReceiverID = id
 			p.Context.Emit(goka.Stream("Hub"), ComposeKey(label, id), msg)
 		}
 
@@ -106,7 +115,7 @@ func (p *Executor) NotifySuperOrdinates(operation shared.Operation, props shared
 	return nil
 }
 
-func (p *Executor) ApplyContext(ctx map[string]interface{}) error {
+func (p *Executor) ApplyContext(nodeID int64, ctx map[string]interface{}) error {
 	session, err := p.newSession()
 	if err != nil {
 		return errors.Annotate(err, "newSession")
@@ -123,7 +132,7 @@ func (p *Executor) ApplyContext(ctx map[string]interface{}) error {
 
 		`,
 		map[string]interface{}{
-			"id":         p.NodeID,
+			"id":         nodeID,
 			"modifiedAt": time.Now().UTC(),
 			"ctx":        ctx,
 		})
@@ -134,7 +143,7 @@ func (p *Executor) ApplyContext(ctx map[string]interface{}) error {
 
 	if result.Next() {
 		if res, ok := result.Record().Get("result"); ok {
-			if res.(int64) != p.NodeID {
+			if res.(int64) != nodeID {
 				return ErrInvalidOperationResult
 			}
 		} else {

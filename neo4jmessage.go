@@ -2,25 +2,15 @@ package nksh
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/juju/errors"
 )
 
-type Neo4jProperties map[string]interface{}
-
-func (p Neo4jProperties) MustGet(field string) interface{} {
-	if val, ok := p[field]; ok {
-		return val
-	}
-	panic(fmt.Sprintf("Neo4jProperties:MustGet: field %s undefined", field))
-}
-
 type Neo4jBeforeOrAfter struct {
-	Labels     []string        `json:"labels"`
-	Properties Neo4jProperties `json:"properties"`
+	Labels     []string   `json:"labels"`
+	Properties Properties `json:"properties"`
 }
 
 type Neo4jStartOrEnd struct {
@@ -33,13 +23,13 @@ type Neo4jSource struct {
 }
 
 type Neo4jPayload struct {
-	ID       string             `json:"id"`
-	Type     string             `json:"type"`
-	RelLabel string             `json:"label"`
-	Start    Neo4jStartOrEnd    `json:"start"`
-	End      Neo4jStartOrEnd    `json:"end"`
-	After    Neo4jBeforeOrAfter `json:"after"`
-	Before   Neo4jBeforeOrAfter `json:"before"`
+	ID       string              `json:"id"`
+	Type     string              `json:"type"`
+	RelLabel string              `json:"label"`
+	Start    *Neo4jStartOrEnd    `json:"start,omitempty"`
+	End      *Neo4jStartOrEnd    `json:"end,omitempty"`
+	After    *Neo4jBeforeOrAfter `json:"after,omitempty"`
+	Before   *Neo4jBeforeOrAfter `json:"before,omitempty"`
 }
 
 type Neo4jMeta struct {
@@ -58,9 +48,9 @@ type Neo4jMessage struct {
 }
 
 func (p *Neo4jMessage) ToNodeContext() (*NodeContext, error) {
-	id, err := strconv.ParseUint(p.Payload.ID, 10, 64)
+	id, err := strconv.ParseInt(p.Payload.ID, 10, 64)
 	if err != nil {
-		return nil, errors.Annotate(err, "ParseUint [id]")
+		return nil, errors.Annotate(err, "ParseInt [id]")
 	}
 
 	n := NodeContext{

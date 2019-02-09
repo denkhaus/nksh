@@ -80,11 +80,11 @@ func (p ChangeInfos) Deleted(field string) bool {
 }
 
 type NodeContext struct {
-	TimeStamp   time.Time       `json:"time_stamp"`
-	Operation   string          `json:"operation"`
-	NodeID      uint64          `json:"node_id"`
-	ChangeInfos ChangeInfos     `json:"change_infos"`
-	Properties  Neo4jProperties `json:"properties"`
+	TimeStamp   time.Time   `json:"time_stamp"`
+	Operation   string      `json:"operation"`
+	NodeID      int64       `json:"node_id"`
+	ChangeInfos ChangeInfos `json:"change_infos"`
+	Properties  Properties  `json:"properties"`
 }
 
 func (p *NodeContext) Match(

@@ -3,10 +3,10 @@ package nksh
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/signal"
-	"strings"
-	"syscall"
+	"syscall" 
 
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
@@ -19,7 +19,20 @@ var (
 	log logrus.FieldLogger = logrus.New().WithField("package", "nksh")
 )
 
+type Properties map[string]interface{}
+
+func (p Properties) MustGet(field string) interface{} {
+	if val, ok := p[field]; ok {
+		return val
+	}
+	panic(fmt.Sprintf("Properties:MustGet: field %s undefined", field))
+}
+
 type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func() error
+
+func ComposeKey(label string, id int64) string {
+	return fmt.Sprintf("%s-%d-%s", label, id, RandStringBytes(4))
+}
 
 func Startup(kafkaHost, zookeeperHost string, funcs ...DispatcherFunc) error {
 	kServers, err := LookupClusterHosts(kafkaHost, 9092)
@@ -133,18 +146,13 @@ func SetLogger(logger logrus.FieldLogger) {
 	log = logger
 }
 
-func LookupClusterHosts(host string, port int, params ...string) ([]string, error) {
-	ips, err := DNSLookupIP(host, 50)
-	if err != nil {
-		return nil, errors.Annotate(err, "DNSLookupIP")
-	}
 
-	res := []string{}
-	for _, ip := range ips {
-		res = append(res, fmt.Sprintf(
-			"%s:%d%s", ip, port, strings.Join(params, ""),
-		))
-	}
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-	return res, nil
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }

@@ -3,6 +3,9 @@ package nksh
 import (
 	"time"
 
+	"github.com/denkhaus/nksh/hub"
+	"github.com/denkhaus/nksh/shared"
+
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
@@ -13,15 +16,15 @@ var (
 	ErrInvalidOperationResult = errors.New("invalid operation result")
 )
 
-type Neo4jExecutor struct {
+type Executor struct {
 	Driver    neo4j.Driver
 	Context   goka.Context
 	NodeLabel string
 	NodeID    int64
 }
 
-func NewNeo4jExecutor(ctx goka.Context, nodeLabel string, nodeID int64, driver neo4j.Driver) *Neo4jExecutor {
-	ex := Neo4jExecutor{
+func NewExecutor(ctx goka.Context, nodeLabel string, nodeID int64, driver neo4j.Driver) *Executor {
+	ex := Executor{
 		Driver:    driver,
 		NodeID:    nodeID,
 		Context:   ctx,
@@ -31,7 +34,7 @@ func NewNeo4jExecutor(ctx goka.Context, nodeLabel string, nodeID int64, driver n
 	return &ex
 }
 
-func (p *Neo4jExecutor) newSession() (neo4j.Session, error) {
+func (p *Executor) newSession() (neo4j.Session, error) {
 	session, err := p.Driver.Session(neo4j.AccessModeWrite)
 	if err != nil {
 		return nil, errors.Annotate(err, "Session")
@@ -40,7 +43,7 @@ func (p *Neo4jExecutor) newSession() (neo4j.Session, error) {
 	return session, nil
 }
 
-func (p *Neo4jExecutor) enumerateSuperOrdinates(enumerate func(id int64, labels []interface{}) error) error {
+func (p *Executor) enumerateSuperOrdinates(enumerate func(id int64, labels []interface{}) error) error {
 	session, err := p.newSession()
 	if err != nil {
 		return errors.Annotate(err, "newSession")
@@ -80,12 +83,12 @@ func (p *Neo4jExecutor) enumerateSuperOrdinates(enumerate func(id int64, labels 
 	return nil
 }
 
-func (p *Neo4jExecutor) NotifySuperOrdinates(reason string, props Properties) error {
-	msg := HubMessage{
-		SenderLabel:  p.NodeLabel,
-		SenderReason: reason,
-		SenderID:     p.NodeID,
-		Properties:   props,
+func (p *Executor) NotifySuperOrdinates(operation string, props shared.Properties) error {
+	msg := hub.Context{
+		SenderLabel: p.NodeLabel,
+		Operation:   operation,
+		SenderID:    p.NodeID,
+		Properties:  props,
 	}
 
 	p.enumerateSuperOrdinates(func(id int64, labels []interface{}) error {
@@ -102,7 +105,7 @@ func (p *Neo4jExecutor) NotifySuperOrdinates(reason string, props Properties) er
 	return nil
 }
 
-func (p *Neo4jExecutor) ApplyContext(ctx map[string]interface{}) error {
+func (p *Executor) ApplyContext(ctx map[string]interface{}) error {
 	session, err := p.newSession()
 	if err != nil {
 		return errors.Annotate(err, "newSession")

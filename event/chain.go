@@ -1,4 +1,4 @@
-package nksh
+package event
 
 import (
 	"github.com/juju/errors"
@@ -6,19 +6,19 @@ import (
 	"github.com/lovoo/goka"
 )
 
-type EventHandler func(ctx goka.Context, m *NodeContext) error
+type Handler func(ctx goka.Context, m *Context) error
 
 type ActionData struct {
 	Operation      string
 	FieldOperation string
 	FieldName      string
-	HandleEvent    EventHandler
+	HandleEvent    Handler
 	Or             []ActionData
 	And            []ActionData
 	Not            []ActionData
 }
 
-func (p *ActionData) Match(m *NodeContext) bool {
+func (p *ActionData) Match(m *Context) bool {
 	result := m.Match(
 		p.Operation,
 		p.FieldName,
@@ -49,11 +49,11 @@ type Stage2 interface {
 	Or(or ...Stage2) Stage2
 	And(or ...Stage2) Stage2
 	Not(not ...Stage2) Stage2
-	Do(fn EventHandler) EventAction
+	Do(fn Handler) Action
 }
 
-type EventAction interface {
-	ApplyMessage(ctx goka.Context, m *NodeContext) error
+type Action interface {
+	ApplyMessage(ctx goka.Context, m *Context) error
 }
 
 type chain builder.Builder
@@ -114,14 +114,14 @@ func (b chain) Not(not ...Stage2) Stage2 {
 	return builder.Append(b, "Not", data...).(Stage2)
 }
 
-func (b chain) Do(fn EventHandler) EventAction {
-	return builder.Set(b, "HandleEvent", fn).(EventAction)
+func (b chain) Do(fn Handler) Action {
+	return builder.Set(b, "HandleEvent", fn).(Action)
 }
 
-func (b chain) ApplyMessage(ctx goka.Context, m *NodeContext) error {
+func (b chain) ApplyMessage(ctx goka.Context, m *Context) error {
 	data := builder.GetStruct(b).(ActionData)
-	if data.Match(m) {		
-		if data.HandleEvent == nil{
+	if data.Match(m) {
+		if data.HandleEvent == nil {
 			return errors.New("EventChain: handler func undefined")
 		}
 		if err := data.HandleEvent(ctx, m); err != nil {
@@ -132,4 +132,4 @@ func (b chain) ApplyMessage(ctx goka.Context, m *NodeContext) error {
 	return nil
 }
 
-var EventChain = builder.Register(chain{}, ActionData{}).(Stage1)
+var Chain = builder.Register(chain{}, ActionData{}).(Stage1)

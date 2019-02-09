@@ -1,8 +1,10 @@
-package nksh
+package event
 
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/denkhaus/nksh/shared"
 )
 
 type ChangeInfo struct {
@@ -79,15 +81,15 @@ func (p ChangeInfos) Deleted(field string) bool {
 	return false
 }
 
-type NodeContext struct {
-	TimeStamp   time.Time   `json:"time_stamp"`
-	Operation   string      `json:"operation"`
-	NodeID      int64       `json:"node_id"`
-	ChangeInfos ChangeInfos `json:"change_infos"`
-	Properties  Properties  `json:"properties"`
+type Context struct {
+	TimeStamp   time.Time         `json:"time_stamp"`
+	Operation   string            `json:"operation"`
+	NodeID      int64             `json:"node_id"`
+	ChangeInfos ChangeInfos       `json:"change_infos"`
+	Properties  shared.Properties `json:"properties"`
 }
 
-func (p *NodeContext) Match(
+func (p *Context) Match(
 
 	operation string,
 	fieldName string,
@@ -111,7 +113,7 @@ func (p *NodeContext) Match(
 	return p.Operation == operation
 }
 
-func (p *NodeContext) buildChanges(before bool, props map[string]interface{}) {
+func (p *Context) buildChanges(before bool, props map[string]interface{}) {
 	for field, value := range props {
 		if info, ok := p.ChangeInfos[field]; ok {
 			if before {
@@ -135,13 +137,13 @@ func (p *NodeContext) buildChanges(before bool, props map[string]interface{}) {
 	}
 }
 
-type NodeContextCodec struct{}
+type ContextCodec struct{}
 
-func (p *NodeContextCodec) Encode(value interface{}) ([]byte, error) {
+func (p *ContextCodec) Encode(value interface{}) ([]byte, error) {
 	return json.Marshal(value)
 }
 
-func (p *NodeContextCodec) Decode(data []byte) (interface{}, error) {
-	var m NodeContext
+func (p *ContextCodec) Decode(data []byte) (interface{}, error) {
+	var m Context
 	return &m, json.Unmarshal(data, &m)
 }

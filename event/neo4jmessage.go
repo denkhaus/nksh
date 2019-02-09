@@ -1,16 +1,18 @@
-package nksh
+package event
 
 import (
 	"encoding/json"
 	"strconv"
 	"time"
 
+	"github.com/denkhaus/nksh/shared"
+
 	"github.com/juju/errors"
 )
 
 type Neo4jBeforeOrAfter struct {
-	Labels     []string   `json:"labels"`
-	Properties Properties `json:"properties"`
+	Labels     []string          `json:"labels"`
+	Properties shared.Properties `json:"properties"`
 }
 
 type Neo4jStartOrEnd struct {
@@ -47,13 +49,13 @@ type Neo4jMessage struct {
 	Payload Neo4jPayload `json:"payload"`
 }
 
-func (p *Neo4jMessage) ToNodeContext() (*NodeContext, error) {
+func (p *Neo4jMessage) ToContext() (*Context, error) {
 	id, err := strconv.ParseInt(p.Payload.ID, 10, 64)
 	if err != nil {
 		return nil, errors.Annotate(err, "ParseInt [id]")
 	}
 
-	n := NodeContext{
+	n := Context{
 		NodeID:      id,
 		ChangeInfos: make(ChangeInfos),
 		Operation:   p.Meta.Operation,

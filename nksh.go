@@ -8,6 +8,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/denkhaus/nksh/hub"
+
+	"github.com/denkhaus/nksh/event"
+
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 
 	"github.com/juju/errors"
@@ -20,15 +24,6 @@ import (
 var (
 	log logrus.FieldLogger = logrus.New().WithField("package", "nksh")
 )
-
-type Properties map[string]interface{}
-
-func (p Properties) MustGet(field string) interface{} {
-	if val, ok := p[field]; ok {
-		return val
-	}
-	panic(fmt.Sprintf("Properties:MustGet: field %s undefined", field))
-}
 
 type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func() error
 
@@ -74,8 +69,8 @@ func Startup(kafkaHost, zookeeperHost string, funcs ...DispatcherFunc) error {
 	return nil
 }
 
-func handleEntityMessages(ctx goka.Context, msg interface{}, actions ...EventAction) error {
-	m, ok := msg.(*NodeContext)
+func handleInputEvents(ctx goka.Context, msg interface{}, actions ...event.Action) error {
+	m, ok := msg.(*event.Context)
 	if !ok {
 		return errors.Errorf("invalid message type %+v", msg)
 	}
@@ -89,15 +84,15 @@ func handleEntityMessages(ctx goka.Context, msg interface{}, actions ...EventAct
 	return nil
 }
 
-func CreateInputEventConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...EventAction) DispatcherFunc {
+func CreateInputEventConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...event.Action) DispatcherFunc {
 	return func(ctx context.Context, kServers, zServers []string) func() error {
 		return func() error {
 			g := goka.DefineGroup(group,
-				goka.Input(inputStream, new(NodeContextCodec), func(ctx goka.Context, msg interface{}) {
-					if err := handleEntityMessages(ctx, msg, actions...); err != nil {
-						log.Error(errors.Annotate(err, "handleEntityMessages"))
+				goka.Input(inputStream, new(event.ContextCodec), func(ctx goka.Context, msg interface{}) {
+					if err := handleInputEvents(ctx, msg, actions...); err != nil {
+						log.Error(errors.Annotate(err, "handleInputEvents"))
 					}
-				}), goka.Output(outputStream, new(HubMessageCodec)),
+				}), goka.Output(outputStream, new(event.ContextCodec)),
 			)
 
 			p, err := goka.NewProcessor(kServers, g,
@@ -118,12 +113,31 @@ func CreateInputEventConsumer(group goka.Group, inputStream, outputStream goka.S
 	}
 }
 
-func CreateHubConsumer(group goka.Group, inputStream, outputStream goka.Stream, cb goka.ProcessCallback) DispatcherFunc {
+func handleHubEvents(ctx goka.Context, msg interface{}, actions ...hub.Action) error {
+	m, ok := msg.(*hub.Context)
+	if !ok {
+		return errors.Errorf("invalid message type %+v", msg)
+	}
+
+	for _, action := range actions {
+		if err := action.ApplyMessage(ctx, m); err != nil {
+			return errors.Annotate(err, "ApplyMessage")
+		}
+	}
+
+	return nil
+}
+
+func CreateHubConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...hub.Action) DispatcherFunc {
 	return func(ctx context.Context, kServers, zServers []string) func() error {
 		return func() error {
 			g := goka.DefineGroup(group,
-				goka.Input(inputStream, new(HubMessageCodec), cb),
-				goka.Output(outputStream, new(HubMessageCodec)),
+				goka.Input(inputStream, new(hub.ContextCodec), func(ctx goka.Context, msg interface{}) {
+					if err := handleHubEvents(ctx, msg, actions...); err != nil {
+						log.Error(errors.Annotate(err, "handleHubEvents"))
+					}
+				}),
+				goka.Output(outputStream, new(hub.ContextCodec)),
 			)
 
 			p, err := goka.NewProcessor(kServers, g,

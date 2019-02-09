@@ -60,7 +60,7 @@ type Stage4 interface {
 }
 
 type Action interface {
-	ApplyMessage(ctx goka.Context, m *Context) error
+	ApplyMessage(ctx goka.Context, m *Context) (bool, error)
 }
 
 type chain builder.Builder
@@ -113,18 +113,19 @@ func (b chain) Do(fn Handler) Action {
 	return builder.Set(b, "HandleEvent", fn).(Action)
 }
 
-func (b chain) ApplyMessage(ctx goka.Context, m *Context) error {
+func (b chain) ApplyMessage(ctx goka.Context, m *Context) (bool, error) {
 	data := builder.GetStruct(b).(ActionData)
 	if data.Match(m) {
 		if data.HandleEvent == nil {
-			return errors.New("EventChain: handler func undefined")
+			return false, errors.New("EventChain: handler func undefined")
 		}
 		if err := data.HandleEvent(ctx, m); err != nil {
-			return errors.Annotate(err, "HandleEvent")
+			return false, errors.Annotate(err, "HandleEvent")
 		}
+		return true, nil
 	}
 
-	return nil
+	return false, nil
 }
 
 var Chain = builder.Register(chain{}, ActionData{}).(Stage1)

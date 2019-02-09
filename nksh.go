@@ -76,8 +76,13 @@ func handleInputEvents(ctx goka.Context, msg interface{}, actions ...event.Actio
 	}
 
 	for _, action := range actions {
-		if err := action.ApplyMessage(ctx, m); err != nil {
+		handled, err := action.ApplyMessage(ctx, m)
+		if err != nil {
 			return errors.Annotate(err, "ApplyMessage")
+		}
+
+		if !handled {
+			log.Warningf("unhandled msg [no match]: %+v", m)
 		}
 	}
 
@@ -120,8 +125,13 @@ func handleHubEvents(ctx goka.Context, msg interface{}, actions ...hub.Action) e
 	}
 
 	for _, action := range actions {
-		if err := action.ApplyMessage(ctx, m); err != nil {
+		handled, err := action.ApplyMessage(ctx, m)
+		if err != nil {
 			return errors.Annotate(err, "ApplyMessage")
+		}
+
+		if !handled {
+			log.Warningf("unhandled msg [no match]: %+v", m)
 		}
 	}
 

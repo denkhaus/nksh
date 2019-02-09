@@ -1,7 +1,6 @@
 package nksh
 
 import (
-
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
@@ -31,7 +30,7 @@ func NewNeo4jExecutor(ctx goka.Context, nodeLabel string, nodeID int64, driver n
 }
 
 func (p *Neo4jExecutor) newSession() (neo4j.Session, error) {
-	session, err := neo4jDriver.Session(neo4j.AccessModeWrite)
+	session, err := p.Driver.Session(neo4j.AccessModeWrite)
 	if err != nil {
 		return nil, errors.Annotate(err, "Session")
 	}
@@ -80,11 +79,11 @@ func (p *Neo4jExecutor) enumerateSuperOrdinates(enumerate func(id int64, labels 
 }
 
 func (p *Neo4jExecutor) NotifySuperOrdinates(reason string, props Properties) error {
-	msg := nksh.HubMessage{
-		SenderLabel: p.NodeLabel,
+	msg := HubMessage{
+		SenderLabel:  p.NodeLabel,
 		SenderReason: reason,
-		SenderID:    p.NodeID,
-		Properties:  props,
+		SenderID:     p.NodeID,
+		Properties:   props,
 	}
 
 	p.enumerateSuperOrdinates(func(id int64, labels []interface{}) error {

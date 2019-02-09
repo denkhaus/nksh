@@ -6,7 +6,9 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
-	"syscall" 
+	"syscall"
+
+	"github.com/neo4j/neo4j-go-driver/neo4j"
 
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
@@ -146,7 +148,6 @@ func SetLogger(logger logrus.FieldLogger) {
 	log = logger
 }
 
-
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func RandStringBytes(n int) string {
@@ -155,4 +156,28 @@ func RandStringBytes(n int) string {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(b)
+}
+
+func ConnectNeo4j() (neo4j.Driver, error) {
+	log.Info("connect neo4j")
+
+	user := os.Getenv("NEO4J_USERNAME")
+	if user == "" {
+		return nil, errors.New("Neo4j username undefined")
+	}
+
+	password := os.Getenv("NEO4J_PASSWORD")
+	if password == "" {
+		return nil, errors.New("Neo4j password undefined")
+	}
+
+	driver, err := neo4j.NewDriver(fmt.Sprintf("bolt://%s:7687", *nHost),
+		neo4j.BasicAuth(user, password, ""),
+	)
+
+	if err != nil {
+		return nil, errors.Annotate(err, "NewDriver")
+	}
+
+	return driver, nil
 }

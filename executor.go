@@ -1,6 +1,8 @@
 package nksh
 
 import (
+	"time"
+
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
@@ -117,8 +119,9 @@ func (p *Neo4jExecutor) ApplyContext(ctx map[string]interface{}) error {
 
 		`,
 		map[string]interface{}{
-			"id":  p.NodeID,
-			"ctx": ctx,
+			"id":         p.NodeID,
+			"modifiedAt": time.Now().UTC(),
+			"ctx":        ctx,
 		})
 
 	if err != nil {

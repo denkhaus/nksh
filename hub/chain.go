@@ -71,15 +71,15 @@ func (b chain) From(sender string) Stage2 {
 }
 
 func (b chain) OnNodeCreated() Stage3 {
-	return builder.Set(b, "Operation", "created").(Stage3)
+	return builder.Set(b, "Operation", shared.CreatedOperation).(Stage3)
 }
 
 func (b chain) OnNodeUpdated() Stage3 {
-	return builder.Set(b, "Operation", "updated").(Stage3)
+	return builder.Set(b, "Operation", shared.UpdatedOperation).(Stage3)
 }
 
 func (b chain) OnNodeDeleted() Stage3 {
-	return builder.Set(b, "Operation", "deleted").(Stage3)
+	return builder.Set(b, "Operation", shared.DeletedOperation).(Stage3)
 }
 
 func (b chain) With(fn ConditionFunc) Stage4 {

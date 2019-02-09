@@ -64,30 +64,30 @@ func (b chain) OnNodeCreated() Stage2 {
 }
 
 func (b chain) OnNodeUpdated() Stage2 {
-	c := builder.Set(b, "Operation", "updated")
-	c = builder.Set(c, "FieldOperation", "updated")
+	c := builder.Set(b, "Operation", shared.UpdatedOperation)
+	c = builder.Set(c, "FieldOperation", shared.UpdatedOperation)
 	return builder.Set(c, "FieldName", "*").(Stage2)
 }
 
 func (b chain) OnNodeDeleted() Stage2 {
-	return builder.Set(b, "Operation", "deleted").(Stage2)
+	return builder.Set(b, "Operation", shared.DeletedOperation).(Stage2)
 }
 
 func (b chain) OnFieldCreated(field string) Stage2 {
-	c := builder.Set(b, "Operation", "updated")
-	c = builder.Set(c, "FieldOperation", "created")
+	c := builder.Set(b, "Operation", shared.UpdatedOperation)
+	c = builder.Set(c, "FieldOperation", shared.CreatedOperation)
 	return builder.Set(c, "FieldName", field).(Stage2)
 }
 
 func (b chain) OnFieldUpdated(field string) Stage2 {
-	c := builder.Set(b, "Operation", "updated")
-	c = builder.Set(c, "FieldOperation", "updated")
+	c := builder.Set(b, "Operation", shared.UpdatedOperation)
+	c = builder.Set(c, "FieldOperation", shared.UpdatedOperation)
 	return builder.Set(c, "FieldName", field).(Stage2)
 }
 
 func (b chain) OnFieldDeleted(field string) Stage2 {
-	c := builder.Set(b, "Operation", "updated")
-	c = builder.Set(c, "FieldOperation", "deleted")
+	c := builder.Set(b, "Operation", shared.UpdatedOperation)
+	c = builder.Set(c, "FieldOperation", shared.DeletedOperation)
 	return builder.Set(c, "FieldName", field).(Stage2)
 }
 

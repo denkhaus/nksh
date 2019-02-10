@@ -16,6 +16,8 @@ var (
 	ErrInvalidOperationResult = errors.New("invalid operation result")
 )
 
+type OnRecordFunc func(rec neo4j.Record)error
+
 type Executor struct {
 	Driver  neo4j.Driver
 	Context goka.Context
@@ -115,7 +117,7 @@ func (p *Executor) NotifySuperOrdinates(
 	return nil
 }
 
-func (p *Executor) ApplyContext(nodeID int64, ctx map[string]interface{}) error {
+func (p *Executor) ApplyContext(nodeID int64, ctx shared.Properties) error {
 	session, err := p.newSession()
 	if err != nil {
 		return errors.Annotate(err, "newSession")
@@ -151,6 +153,32 @@ func (p *Executor) ApplyContext(nodeID int64, ctx map[string]interface{}) error 
 		}
 	} else {
 		return ErrEmptyOperationResult
+	}
+
+	if err = result.Err(); err != nil {
+		return errors.Annotate(err, "Err")
+	}
+
+	return nil
+}
+
+func (p *Executor) Run(cypher string, ctx shared.Properties, onRecord OnRecordFunc) error {
+	session, err := p.newSession()
+	if err != nil {
+		return errors.Annotate(err, "newSession")
+	}
+
+	defer session.Close()
+
+	result, err := session.Run(cypher,ctx)
+	if err != nil {
+		return errors.Annotate(err, "Run")
+	}
+
+	for result.Next() {
+		if err := onRecord(result.Record()); err !=nil {
+			return errors.Annotate(err,"onRecord")			
+		} 		 
 	}
 
 	if err = result.Err(); err != nil {

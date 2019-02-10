@@ -12,6 +12,21 @@ type ChangeInfo struct {
 	After  interface{} `json:"after"`
 }
 
+func (p ChangeInfo) Created() bool {
+	return p.Before == nil && p.After != nil
+}
+
+func (p ChangeInfo) Updated() bool {
+	if p.Before == nil && p.After == nil {
+		return false
+	}
+	return p.Before != p.After
+}
+
+func (p ChangeInfo) Deleted() bool {
+	return p.Before != nil && p.After == nil
+}
+
 type ChangeInfos map[string]ChangeInfo
 
 func (p ChangeInfos) Created(field string) bool {
@@ -20,15 +35,13 @@ func (p ChangeInfos) Created(field string) bool {
 	}
 	if field == "*" {
 		for _, info := range p {
-			if info.Before == nil && info.After != nil {
+			if info.Created() {
 				return true
 			}
 		}
 	} else {
 		if info, ok := p[field]; ok {
-			if info.Before == nil && info.After != nil {
-				return true
-			}
+			return info.Created()
 		}
 	}
 
@@ -41,19 +54,13 @@ func (p ChangeInfos) Updated(field string) bool {
 	}
 	if field == "*" {
 		for _, info := range p {
-			if info.Before == nil || info.After == nil {
-				continue
-			}
-			if info.Before != info.After {
+			if info.Updated() {
 				return true
 			}
 		}
 	} else {
 		if info, ok := p[field]; ok {
-			if info.Before == nil || info.After == nil {
-				return false
-			}
-			return info.Before != info.After
+			return info.Updated()
 		}
 	}
 
@@ -66,15 +73,13 @@ func (p ChangeInfos) Deleted(field string) bool {
 	}
 	if field == "*" {
 		for _, info := range p {
-			if info.Before != nil && info.After == nil {
+			if info.Deleted() {
 				return true
 			}
 		}
 	} else {
 		if info, ok := p[field]; ok {
-			if info.Before != nil && info.After == nil {
-				return true
-			}
+			return info.Deleted()
 		}
 	}
 

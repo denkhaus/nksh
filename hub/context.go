@@ -21,15 +21,15 @@ func (p *Context) Match(
 	condition ConditionFunc,
 
 ) bool {
-
-	if p.Operation == operation &&
-		sender == p.Sender {
-		if condition != nil {
-			return condition(*p)
-		}
+	result := p.Sender == sender
+	if operation != "" {
+		result = result && p.Operation == operation
+	}
+	if condition != nil {
+		result = result && condition(*p)
 	}
 
-	return false
+	return result
 }
 
 type ContextCodec struct{}

@@ -46,6 +46,9 @@ type Stage2 interface {
 	OnNodeCreated() Stage3
 	OnNodeUpdated() Stage3
 	OnNodeDeleted() Stage3
+	Or(or ...Stage2) Stage4
+	And(or ...Stage2) Stage4
+	Not(not ...Stage2) Stage4
 }
 
 type Stage3 interface {

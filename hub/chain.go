@@ -57,9 +57,7 @@ type Stage3 interface {
 }
 
 type Stage4 interface {
-	Or(or ...Stage2) Stage4
-	And(or ...Stage2) Stage4
-	Not(not ...Stage2) Stage4
+	Stage2
 	Do(fn Handler) Action
 }
 

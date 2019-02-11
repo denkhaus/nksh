@@ -87,28 +87,28 @@ func (b chain) With(fn ConditionFunc) Stage4 {
 	return builder.Set(b, "Condition", fn).(Stage4)
 }
 
-func (b chain) Or(or ...Stage2) Stage2 {
+func (b chain) Or(or ...Stage2) Stage4 {
 	data := []interface{}{}
 	for _, o := range or {
 		data = append(data, builder.GetStruct(o))
 	}
-	return builder.Append(b, "Or", data...).(Stage2)
+	return builder.Append(b, "Or", data...).(Stage4)
 }
 
-func (b chain) And(and ...Stage2) Stage2 {
+func (b chain) And(and ...Stage2) Stage4 {
 	data := []interface{}{}
 	for _, a := range and {
 		data = append(data, builder.GetStruct(a))
 	}
-	return builder.Append(b, "And", data...).(Stage2)
+	return builder.Append(b, "And", data...).(Stage4)
 }
 
-func (b chain) Not(not ...Stage2) Stage2 {
+func (b chain) Not(not ...Stage2) Stage4 {
 	data := []interface{}{}
 	for _, n := range not {
 		data = append(data, builder.GetStruct(n))
 	}
-	return builder.Append(b, "Not", data...).(Stage2)
+	return builder.Append(b, "Not", data...).(Stage4)
 }
 
 func (b chain) Do(fn Handler) Action {

@@ -117,10 +117,11 @@ func (b chain) Do(fn Handler) Action {
 
 func (b chain) ApplyMessage(ctx goka.Context, m *Context) (bool, error) {
 	data := builder.GetStruct(b).(ActionData)
+	if data.HandleEvent == nil {
+		return false, errors.New("EventChain: handler func undefined")
+	}
+
 	if data.Match(m) {
-		if data.HandleEvent == nil {
-			return false, errors.New("EventChain: handler func undefined")
-		}
 		if err := data.HandleEvent(ctx, m); err != nil {
 			return false, errors.Annotate(err, "HandleEvent")
 		}

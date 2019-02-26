@@ -25,6 +25,10 @@ var (
 	log logrus.FieldLogger = logrus.New().WithField("package", "nksh")
 )
 
+var(
+	HubStream                = goka.Stream("Hub") 
+)
+
 type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func() error
 
 func ComposeKey(label string, id int64) string {
@@ -82,14 +86,20 @@ func handleInputEvents(ctx goka.Context, msg interface{}, actions ...event.Actio
 		}
 
 		if !handled {
-			log.Warningf("unhandled msg [no match]: %+v", m)
+			log.Warningf("unhandled input msg [no match]: %+v", m)
 		}
 	}
 
 	return nil
 }
 
-func CreateInputEventConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...event.Action) DispatcherFunc {
+func CreateInputConsumerDefaults(label string, actions ...event.Action) DispatcherFunc {
+	group := goka.Group(fmt.Sprintf("%s_InputGroup",label))
+	inputStream := goka.Stream(fmt.Sprintf("Input2%s",label))
+ 	return CreateInputConsumer(group, inputStream, HubStream , actions ...) 
+}
+
+func CreateInputConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...event.Action) DispatcherFunc {
 	return func(ctx context.Context, kServers, zServers []string) func() error {
 		return func() error {
 			g := goka.DefineGroup(group,
@@ -131,11 +141,18 @@ func handleHubEvents(ctx goka.Context, msg interface{}, actions ...hub.Action) e
 		}
 
 		if !handled {
-			log.Warningf("unhandled msg [no match]: %+v", m)
+			log.Warningf("unhandled hub msg [no match]: %+v", m)
 		}
 	}
 
 	return nil
+}
+
+
+func CreateHubConsumerDefaults(label string, actions ...event.Action) DispatcherFunc {
+	group := goka.Group(fmt.Sprintf("%s_HubGroup",label))
+	outputStream := goka.Stream(fmt.Sprintf("Hub2%s",label))
+ 	return CreateHubConsumer(group, HubStream ,outputStream, actions ...) 
 }
 
 func CreateHubConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...hub.Action) DispatcherFunc {

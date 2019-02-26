@@ -57,11 +57,14 @@ func TestChain(t *testing.T) {
 	ctx, err := msg.ToContext()
 	assert.NoError(t, err, "create context")
 
+	handlerTriggered := 0
 	condition := Chain.OnFieldUpdated("first_name").Do(func(ctx goka.Context, m *Context) error {
+		handlerTriggered++
 		return nil
 	})
 
 	hit, err := condition.ApplyMessage(nil, ctx)
 	assert.NoError(t, err, "apply message")
+	assert.Equal(t, 1, handlerTriggered, "handler triggered")
 	assert.True(t, hit, "condition hit")
 }

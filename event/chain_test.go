@@ -26,6 +26,7 @@ var update = `
 	  "before": {
 		"labels": ["Person", "Tmp"],
 		"properties": {
+			"street":"Jordan ave",
 		  "email": "annek@noanswer.org",
 		  "last_name": "Kretchmar",
 		  "first_name": "Anne"
@@ -58,7 +59,14 @@ func TestChain(t *testing.T) {
 	assert.NoError(t, err, "create context")
 
 	handlerTriggered := 0
-	condition := Chain.OnFieldUpdated("first_name").Do(func(ctx goka.Context, m *Context) error {
+	condition := Chain.OnNodeUpdated().
+		And(
+			Chain.OnFieldUpdated("first_name"),
+			Chain.OnFieldCreated("geo"),
+			Chain.OnFieldDeleted("street"),
+		).Not(
+			Chain.OnFieldUpdated("email"),
+		).Do(func(ctx goka.Context, m *Context) error {
 		handlerTriggered++
 		return nil
 	})

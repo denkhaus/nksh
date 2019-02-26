@@ -21,15 +21,28 @@ func (p *Context) Match(
 	condition ConditionFunc,
 
 ) bool {
-	result := p.Sender == sender
-	if operation != "" {
-		result = result && p.Operation == operation
-	}
-	if condition != nil {
-		result = result && condition(*p)
-	}
+	matcher := shared.NewMatcher(
+		func() (bool, func() bool) {
+			return sender != "",
+				func() bool {
+					return p.Sender == sender
+				}
+		},
+		func() (bool, func() bool) {
+			return operation != "",
+				func() bool {
+					return p.Operation == operation
+				}
+		},
+		func() (bool, func() bool) {
+			return condition != nil,
+				func() bool {
+					return condition(*p)
+				}
+		},
+	)
 
-	return result
+	return matcher.Eval()
 }
 
 type ContextCodec struct{}

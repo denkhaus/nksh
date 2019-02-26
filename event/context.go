@@ -102,23 +102,33 @@ func (p *Context) Match(
 
 ) bool {
 
-	if p.Operation == shared.UpdatedOperation {
-		if p.Operation == operation &&
-			fieldName != "" && fieldOperation != "" {
-			switch fieldOperation {
-			case shared.CreatedOperation:
-				return p.ChangeInfos.Created(fieldName)
-			case shared.UpdatedOperation:
-				return p.ChangeInfos.Updated(fieldName)
-			case shared.DeletedOperation:
-				return p.ChangeInfos.Deleted(fieldName)
-			default:
-				return false
-			}
-		}
-	}
+	matcher := shared.NewMatcher(
+		func() (bool, func() bool) {
+			return p.Operation == shared.UpdatedOperation &&
+					p.Operation == operation &&
+					fieldName != "" && fieldOperation != "",
+				func() bool {
+					switch fieldOperation {
+					case shared.CreatedOperation:
+						return p.ChangeInfos.Created(fieldName)
+					case shared.UpdatedOperation:
+						return p.ChangeInfos.Updated(fieldName)
+					case shared.DeletedOperation:
+						return p.ChangeInfos.Deleted(fieldName)
+					default:
+						return false
+					}
+				}
+		},
+		func() (bool, func() bool) {
+			return operation != "",
+				func() bool {
+					return p.Operation == operation
+				}
+		},
+	)
 
-	return p.Operation == operation
+	return matcher.Eval()
 }
 
 func (p *Context) buildChanges(before bool, props map[string]interface{}) {

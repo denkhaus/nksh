@@ -9,11 +9,8 @@ import (
 	"syscall"
 
 	"github.com/denkhaus/nksh/hub"
-
 	"github.com/denkhaus/nksh/event"
-
 	"github.com/neo4j/neo4j-go-driver/neo4j"
-
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
 	"github.com/lovoo/goka/kafka"
@@ -23,11 +20,9 @@ import (
 
 var (
 	log logrus.FieldLogger = logrus.New().WithField("package", "nksh")
-)
-
-var(
 	HubStream                = goka.Stream("Hub") 
 )
+
 
 type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func() error
 
@@ -148,8 +143,7 @@ func handleHubEvents(ctx goka.Context, msg interface{}, actions ...hub.Action) e
 	return nil
 }
 
-
-func CreateHubConsumerDefaults(label string, actions ...event.Action) DispatcherFunc {
+func CreateHubConsumerDefaults(label string, actions ...hub.Action) DispatcherFunc {
 	group := goka.Group(fmt.Sprintf("%s_HubGroup",label))
 	outputStream := goka.Stream(fmt.Sprintf("Hub2%s",label))
  	return CreateHubConsumer(group, HubStream ,outputStream, actions ...) 

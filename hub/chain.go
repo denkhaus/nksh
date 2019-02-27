@@ -7,24 +7,23 @@ import (
 	"github.com/lovoo/goka"
 )
 
-type ConditionFunc func(c Context) bool
 type Handler func(ctx goka.Context, m *Context) error
 
 type ActionData struct {
-	Operation   shared.Operation
-	Sender      string
-	Condition   ConditionFunc
-	Or          []ActionData
-	And         []ActionData
-	Not         []ActionData
-	HandleEvent Handler
+	Operation  shared.Operation
+	Sender     string
+	Conditions []shared.EvalFunc
+	Handlers   []Handler
+	Or         []ActionData
+	And        []ActionData
+	Not        []ActionData
 }
 
 func (p *ActionData) Match(m *Context) bool {
 	result := m.Match(
 		p.Operation,
 		p.Sender,
-		p.Condition,
+		p.Conditions,
 	)
 	for _, data := range p.Or {
 		result = result || data.Match(m)
@@ -52,16 +51,17 @@ type Stage2 interface {
 }
 
 type Stage3 interface {
-	With(fn ConditionFunc) Stage4
+	With(fn shared.EvalFunc) Stage4
 	Do(fn Handler) Action
 }
 
 type Stage4 interface {
 	Stage2
-	Do(fn Handler) Action
+	Then(fn Handler) Action
 }
 
 type Action interface {
+	Then(fn Handler) Action
 	ApplyMessage(ctx goka.Context, m *Context) (bool, error)
 }
 
@@ -83,8 +83,8 @@ func (b chain) OnNodeDeleted() Stage3 {
 	return builder.Set(b, "Operation", shared.DeletedOperation).(Stage3)
 }
 
-func (b chain) With(fn ConditionFunc) Stage4 {
-	return builder.Set(b, "Condition", fn).(Stage4)
+func (b chain) With(fn shared.EvalFunc) Stage4 {
+	return builder.Append(b, "Conditions", fn).(Stage4)
 }
 
 func (b chain) Or(or ...Stage2) Stage4 {
@@ -111,20 +111,23 @@ func (b chain) Not(not ...Stage2) Stage4 {
 	return builder.Append(b, "Not", data...).(Stage4)
 }
 
-func (b chain) Do(fn Handler) Action {
-	return builder.Set(b, "HandleEvent", fn).(Action)
+func (b chain) Then(fn Handler) Action {
+	return builder.Append(b, "Handlers", fn).(Action)
 }
 
 func (b chain) ApplyMessage(ctx goka.Context, m *Context) (bool, error) {
 	data := builder.GetStruct(b).(ActionData)
-	if data.HandleEvent == nil {
-		return false, errors.New("EventChain: handler func undefined")
+	if len(data.Handlers) == 0 {
+		return false, errors.New("HubChain: no handler defined")
 	}
 
 	if data.Match(m) {
-		if err := data.HandleEvent(ctx, m); err != nil {
-			return false, errors.Annotate(err, "HandleEvent")
+		for _, handle := range data.Handlers {
+			if err := handle(ctx, m); err != nil {
+				return false, errors.Annotate(err, "HandleEvent")
+			}
 		}
+
 		return true, nil
 	}
 

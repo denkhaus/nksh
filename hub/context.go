@@ -16,33 +16,29 @@ type Context struct {
 }
 
 func (p *Context) Match(
+
 	operation shared.Operation,
 	sender string,
-	condition ConditionFunc,
+	conditions shared.EvalFuncs,
 
 ) bool {
 	matcher := shared.NewMatcher(
-		func() (bool, func() bool) {
+		func() (bool, shared.EvalFunc) {
 			return sender != "",
-				func() bool {
+				func(_ interface{}) bool {
 					return p.Sender == sender
 				}
 		},
-		func() (bool, func() bool) {
+		func() (bool, shared.EvalFunc) {
 			return operation != "",
-				func() bool {
+				func(_ interface{}) bool {
 					return p.Operation == operation
 				}
 		},
-		func() (bool, func() bool) {
-			return condition != nil,
-				func() bool {
-					return condition(*p)
-				}
-		},
+		shared.MatchConditions(conditions...),
 	)
 
-	return matcher.Eval()
+	return matcher.Eval(*p)
 }
 
 type ContextCodec struct{}

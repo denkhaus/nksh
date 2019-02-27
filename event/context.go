@@ -99,15 +99,16 @@ func (p *Context) Match(
 	operation shared.Operation,
 	fieldName string,
 	fieldOperation shared.Operation,
+	conditions shared.EvalFuncs,
 
 ) bool {
 
 	matcher := shared.NewMatcher(
-		func() (bool, func() bool) {
+		func() (bool, shared.EvalFunc) {
 			return p.Operation == shared.UpdatedOperation &&
 					p.Operation == operation &&
 					fieldName != "" && fieldOperation != "",
-				func() bool {
+				func(_ interface{}) bool {
 					switch fieldOperation {
 					case shared.CreatedOperation:
 						return p.ChangeInfos.Created(fieldName)
@@ -120,15 +121,16 @@ func (p *Context) Match(
 					}
 				}
 		},
-		func() (bool, func() bool) {
+		func() (bool, shared.EvalFunc) {
 			return operation != "",
-				func() bool {
+				func(_ interface{}) bool {
 					return p.Operation == operation
 				}
 		},
+		shared.MatchConditions(conditions...),
 	)
 
-	return matcher.Eval()
+	return matcher.Eval(*p)
 }
 
 func (p *Context) buildChanges(before bool, props map[string]interface{}) {

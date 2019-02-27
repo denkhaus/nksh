@@ -13,7 +13,8 @@ type ActionData struct {
 	Operation      shared.Operation
 	FieldOperation shared.Operation
 	FieldName      string
-	HandleEvent    Handler
+	Handlers       []Handler
+	Conditions     []shared.EvalFunc
 	Or             []ActionData
 	And            []ActionData
 	Not            []ActionData
@@ -24,6 +25,7 @@ func (p *ActionData) Match(m *Context) bool {
 		p.Operation,
 		p.FieldName,
 		p.FieldOperation,
+		p.Conditions,
 	)
 	for _, data := range p.Or {
 		result = result || data.Match(m)
@@ -50,10 +52,12 @@ type Stage2 interface {
 	Or(or ...Stage2) Stage2
 	And(or ...Stage2) Stage2
 	Not(not ...Stage2) Stage2
-	Do(fn Handler) Action
+	With(fn shared.EvalFunc) Stage2
+	Then(fn Handler) Action
 }
 
 type Action interface {
+	Then(fn Handler) Action
 	ApplyMessage(ctx goka.Context, m *Context) (bool, error)
 }
 
@@ -115,20 +119,27 @@ func (b chain) Not(not ...Stage2) Stage2 {
 	return builder.Append(b, "Not", data...).(Stage2)
 }
 
-func (b chain) Do(fn Handler) Action {
-	return builder.Set(b, "HandleEvent", fn).(Action)
+func (b chain) With(fn shared.EvalFunc) Stage2 {
+	return builder.Append(b, "Conditions", fn).(Stage2)
+}
+
+func (b chain) Then(fn Handler) Action {
+	return builder.Append(b, "Handlers", fn).(Action)
 }
 
 func (b chain) ApplyMessage(ctx goka.Context, m *Context) (bool, error) {
 	data := builder.GetStruct(b).(ActionData)
-	if data.HandleEvent == nil {
-		return false, errors.New("EventChain: handler func undefined")
+	if len(data.Handlers) == 0 {
+		return false, errors.New("EventChain: no handler defined")
 	}
-	
+
 	if data.Match(m) {
-		if err := data.HandleEvent(ctx, m); err != nil {
-			return false, errors.Annotate(err, "HandleEvent")
+		for _, handle := range data.Handlers {
+			if err := handle(ctx, m); err != nil {
+				return false, errors.Annotate(err, "HandleEvent")
+			}
 		}
+
 		return true, nil
 	}
 

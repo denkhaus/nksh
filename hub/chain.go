@@ -66,16 +66,16 @@ func (b chain) From(sender string) Stage2 {
 	return builder.Set(b, "Sender", sender).(Stage2)
 }
 
-func (b chain) OnNodeCreated() Stage3 {
-	return builder.Set(b, "Operation", shared.CreatedOperation).(Stage3)
+func (b chain) OnNodeCreated() Stage2 {
+	return builder.Set(b, "Operation", shared.CreatedOperation).(Stage2)
 }
 
-func (b chain) OnNodeUpdated() Stage3 {
-	return builder.Set(b, "Operation", shared.UpdatedOperation).(Stage3)
+func (b chain) OnNodeUpdated() Stage2 {
+	return builder.Set(b, "Operation", shared.UpdatedOperation).(Stage2)
 }
 
-func (b chain) OnNodeDeleted() Stage3 {
-	return builder.Set(b, "Operation", shared.DeletedOperation).(Stage3)
+func (b chain) OnNodeDeleted() Stage2 {
+	return builder.Set(b, "Operation", shared.DeletedOperation).(Stage2)
 }
 
 func (b chain) With(fn shared.EvalFunc) Stage3 {

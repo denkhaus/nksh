@@ -20,7 +20,8 @@ var update = `
 	  }	
 }`
 
-func nodeInvisible(m Context) bool {
+func nodeInvisible(arg interface{}) bool {
+	m:= arg.(Context)
 	return m.Properties.MustBool("visible") == false
 }
 
@@ -35,15 +36,16 @@ func TestChain(t *testing.T) {
 	assert.True(t, ok)
 
 	handlerTriggered := 0
+	onUpdated := Chain.OnNodeUpdated()
 
 	var subordinates = Chain.From("Person").Or(
 		Chain.From("PersonPosition"),
 		Chain.From("Photo"),
 	)
 
-	subordinatesUpdated := subordinates.OnNodeUpdated()
+	subordinatesUpdated := onUpdated.And(subordinates)
 
-	condition := subordinatesUpdated.Do(
+	condition := subordinatesUpdated.Then(
 		func(ctx goka.Context, m *Context) error {
 			handlerTriggered++
 			return nil
@@ -57,7 +59,7 @@ func TestChain(t *testing.T) {
 
 	handlerTriggered = 0
 	var onSubordinatesInvisibled = subordinatesUpdated.With(nodeInvisible).
-		Do(func(ctx goka.Context, m *Context) error {
+		Then(func(ctx goka.Context, m *Context) error {
 			handlerTriggered++
 			return nil
 		})

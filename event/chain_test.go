@@ -66,7 +66,7 @@ func TestChain(t *testing.T) {
 			Chain.OnFieldDeleted("street"),
 		).Not(
 			Chain.OnFieldUpdated("email"),
-		).Do(func(ctx goka.Context, m *Context) error {
+		).Then(func(ctx goka.Context, m *Context) error {
 		handlerTriggered++
 		return nil
 	})

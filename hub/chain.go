@@ -52,7 +52,7 @@ type Stage2 interface {
 
 type Stage3 interface {
 	With(fn shared.EvalFunc) Stage4
-	Do(fn Handler) Action
+	Then(fn Handler) Action
 }
 
 type Stage4 interface {

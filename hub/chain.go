@@ -45,13 +45,10 @@ type Stage1 interface {
 }
 
 type Stage2 interface {
-	Or(or ...Stage1) Stage3
-	And(and ...Stage1) Stage3
-	Not(not ...Stage1) Stage3
-}
-
-type Stage3 interface {
-	With(fn shared.EvalFunc) Stage3
+	Or(or ...Stage2) Stage2
+	And(and ...Stage2) Stage2
+	Not(not ...Stage2) Stage2
+	With(fn shared.EvalFunc) Stage2
 	Then(fn Handler) Action
 }
 
@@ -78,32 +75,32 @@ func (b chain) OnNodeDeleted() Stage2 {
 	return builder.Set(b, "Operation", shared.DeletedOperation).(Stage2)
 }
 
-func (b chain) With(fn shared.EvalFunc) Stage3 {
-	return builder.Append(b, "Conditions", fn).(Stage3)
+func (b chain) With(fn shared.EvalFunc) Stage2 {
+	return builder.Append(b, "Conditions", fn).(Stage2)
 }
 
-func (b chain) Or(or ...Stage1) Stage3 {
+func (b chain) Or(or ...Stage2) Stage2 {
 	data := []interface{}{}
 	for _, o := range or {
 		data = append(data, builder.GetStruct(o))
 	}
-	return builder.Append(b, "Or", data...).(Stage3)
+	return builder.Append(b, "Or", data...).(Stage2)
 }
 
-func (b chain) And(and ...Stage1) Stage3 {
+func (b chain) And(and ...Stage2) Stage2 {
 	data := []interface{}{}
 	for _, a := range and {
 		data = append(data, builder.GetStruct(a))
 	}
-	return builder.Append(b, "And", data...).(Stage3)
+	return builder.Append(b, "And", data...).(Stage2)
 }
 
-func (b chain) Not(not ...Stage1) Stage3 {
+func (b chain) Not(not ...Stage2) Stage2 {
 	data := []interface{}{}
 	for _, n := range not {
 		data = append(data, builder.GetStruct(n))
 	}
-	return builder.Append(b, "Not", data...).(Stage3)
+	return builder.Append(b, "Not", data...).(Stage2)
 }
 
 func (b chain) Then(fn Handler) Action {

@@ -2,6 +2,15 @@ package shared
 
 import "fmt"
 
+type Operation string
+type Operations []Operation
+
+var (
+	CreatedOperation = Operation("created")
+	UpdatedOperation = Operation("updated")
+	DeletedOperation = Operation("deleted")
+)
+
 type Properties map[string]interface{}
 
 func (p Properties) MustGet(field string) interface{} {
@@ -34,11 +43,3 @@ func (p Properties) MustInt64(field string) int64 {
 
 	panic(fmt.Sprintf("Properties:MustInt64: field %s not of type int64", field))
 }
-
-type Operation string
-
-var (
-	CreatedOperation = Operation("created")
-	UpdatedOperation = Operation("updated")
-	DeletedOperation = Operation("deleted")
-)

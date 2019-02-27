@@ -10,9 +10,9 @@ import (
 type Handler func(ctx goka.Context, m *Context) error
 
 type ActionData struct {
-	Operation  shared.Operation
 	Sender     string
-	Conditions []shared.EvalFunc
+	Operation  shared.Operation
+	Conditions shared.EvalFuncs
 	Handlers   []Handler
 	Or         []ActionData
 	And        []ActionData

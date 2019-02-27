@@ -41,13 +41,17 @@ type Stage1 interface {
 	From(sender string) Stage2
 }
 
-type Stage2 interface {
-	OnNodeCreated() Stage3
-	OnNodeUpdated() Stage3
-	OnNodeDeleted() Stage3
+type Logicals interface {
 	Or(or ...Stage2) Stage4
 	And(or ...Stage2) Stage4
 	Not(not ...Stage2) Stage4
+}
+
+type Stage2 interface {
+	Logicals
+	OnNodeCreated() Stage3
+	OnNodeUpdated() Stage3
+	OnNodeDeleted() Stage3
 }
 
 type Stage3 interface {
@@ -56,7 +60,7 @@ type Stage3 interface {
 }
 
 type Stage4 interface {
-	Stage2
+	Logicals
 	Then(fn Handler) Action
 }
 

@@ -21,6 +21,7 @@ import (
 var (
 	log logrus.FieldLogger = logrus.New().WithField("package", "nksh")
 	HubStream                = goka.Stream("Hub") 
+	neo4jDriver neo4j.Driver
 )
 
 
@@ -28,6 +29,12 @@ type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func(
 
 func ComposeKey(label string, id int64) string {
 	return fmt.Sprintf("%s-%d-%s", label, id, RandStringBytes(4))
+}
+
+
+func IsNodeInvisible(arg interface{}) bool { 
+	ctx :=  arg.(hub.Context)
+	return ctx.Properties.MustBool("visible") == false
 }
 
 func SetVisibility(visible bool) Handler{
@@ -204,17 +211,17 @@ func RandStringBytes(n int) string {
 	return string(b)
 }
 
-func ConnectNeo4j(host string) (neo4j.Driver, error) {
+func ConnectNeo4j(host string) error {
 	log.Info("connect neo4j")
 
 	user := os.Getenv("NEO4J_USERNAME")
 	if user == "" {
-		return nil, errors.New("Neo4j username undefined")
+		return errors.New("Neo4j username undefined")
 	}
 
 	password := os.Getenv("NEO4J_PASSWORD")
 	if password == "" {
-		return nil, errors.New("Neo4j password undefined")
+		return  errors.New("Neo4j password undefined")
 	}
 
 	driver, err := neo4j.NewDriver(fmt.Sprintf("bolt://%s:7687", host),
@@ -222,8 +229,20 @@ func ConnectNeo4j(host string) (neo4j.Driver, error) {
 	)
 
 	if err != nil {
-		return nil, errors.Annotate(err, "NewDriver")
+		return  errors.Annotate(err, "NewDriver")
 	}
 
-	return driver, nil
+	neo4jDriver = driver
+	return nil
+}
+
+func Neo4jDriver() neo4j.Driver{
+	return neo4jDriver
+}
+
+func CloseNeo4j (){
+	if neo4jDriver != nil{
+		neo4jDriver.Close()
+		neo4jDriver = nil
+	}
 }

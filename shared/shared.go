@@ -21,7 +21,11 @@ var (
 )
 
 var (
-	HubStream   = goka.Stream("Hub")
+	HubStream = goka.Stream("Hub") // Hubmessages Entity-> Hub
+	HubGroup  = goka.Group("hub")  // Hubmessages Entity-> Hub
+)
+
+var (
 	Neo4jDriver neo4j.Driver
 )
 

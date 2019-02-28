@@ -30,6 +30,17 @@ func ComposeKey(label string, id int64) string {
 	return fmt.Sprintf("%s-%d-%s", label, id, RandStringBytes(4))
 }
 
+func SetVisibility(visible bool) Handler{
+	return func(ctx goka.Context, m *hub.Context) error {
+		log.Infof("set visibility to %T:%+v",visible,  m)
+		
+		exec := nksh.NewExecutor(ctx, neo4jDriver)
+		return exec.ApplyContext(m.ReceiverID, shared.Properties{
+			"visible": visible,
+		})	
+	}
+}
+
 func Startup(kafkaHost, zookeeperHost string, funcs ...DispatcherFunc) error {
 	kServers, err := LookupClusterHosts(kafkaHost, 9092)
 	if err != nil {

@@ -21,8 +21,9 @@ var (
 )
 
 var (
-	HubStream = goka.Stream("Hub") // Hubmessages Entity-> Hub
-	HubGroup  = goka.Group("hub")  // Hubmessages Entity-> Hub
+	HubStream  = goka.Stream("Hub")  // Hubmessages Entity-> Hub
+	HubGroup   = goka.Group("Hub")   // Hubmessages Entity-> Hub
+	InputGroup = goka.Group("Input") // Neo4jMessages  -> Incoming
 )
 
 var (

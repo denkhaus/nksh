@@ -65,13 +65,13 @@ func (p *Neo4jMessage) ToContext() (*shared.EventContext, error) {
 	}
 
 	switch p.Meta.Operation {
-	case "deleted":
+	case shared.DeletedOperation:
 		n.Properties = p.Payload.Before.Properties
 		n.BuildChanges(true, p.Payload.Before.Properties)
-	case "created":
+	case shared.CreatedOperation:
 		n.Properties = p.Payload.After.Properties
 		n.BuildChanges(false, p.Payload.After.Properties)
-	case "updated":
+	case shared.UpdatedOperation:
 		n.Properties = p.Payload.After.Properties
 		n.BuildChanges(false, p.Payload.After.Properties)
 		n.BuildChanges(true, p.Payload.Before.Properties)

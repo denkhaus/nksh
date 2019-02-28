@@ -30,10 +30,11 @@ func handleHubEvents(ctx goka.Context, msg interface{}, actions ...Action) error
 	return nil
 }
 
+// receives dedicated hub messages, sends hub messages
 func CreateConsumerDefaults(label string, actions ...Action) shared.DispatcherFunc {
-	group := goka.Group(fmt.Sprintf("%s_HubGroup", label))
-	outputStream := goka.Stream(fmt.Sprintf("Hub2%s", label))
-	return CreateConsumer(group, shared.HubStream, outputStream, actions...)
+	group := goka.Group(fmt.Sprintf("%s<->Hub", label))
+	inputStream := goka.Stream(fmt.Sprintf("Hub->%s", label))
+	return CreateConsumer(group, inputStream, shared.HubStream, actions...)
 }
 
 func CreateConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...Action) shared.DispatcherFunc {

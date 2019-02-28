@@ -1,6 +1,15 @@
 package shared
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"math/rand"
+
+	"github.com/lovoo/goka"
+	"github.com/neo4j/neo4j-go-driver/neo4j"
+)
+
+type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func() error
 
 type Operation string
 type Operations []Operation
@@ -9,6 +18,11 @@ var (
 	CreatedOperation = Operation("created")
 	UpdatedOperation = Operation("updated")
 	DeletedOperation = Operation("deleted")
+)
+
+var (
+	HubStream   = goka.Stream("Hub")
+	Neo4jDriver neo4j.Driver
 )
 
 type Properties map[string]interface{}
@@ -42,4 +56,18 @@ func (p Properties) MustInt64(field string) int64 {
 	}
 
 	panic(fmt.Sprintf("Properties:MustInt64: field %s not of type int64", field))
+}
+
+func ComposeKey(label string, id int64) string {
+	return fmt.Sprintf("%s-%d-%s", label, id, RandStringBytes(4))
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }

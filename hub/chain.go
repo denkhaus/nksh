@@ -7,7 +7,7 @@ import (
 	"github.com/lovoo/goka"
 )
 
-type Handler func(ctx goka.Context, m *Context) error
+type Handler func(ctx goka.Context, m *shared.HubContext) error
 
 type ActionData struct {
 	Sender     string
@@ -19,7 +19,7 @@ type ActionData struct {
 	Not        []ActionData
 }
 
-func (p *ActionData) Match(m *Context) bool {
+func (p *ActionData) Match(m *shared.HubContext) bool {
 	result := m.Match(
 		p.Operation,
 		p.Sender,
@@ -54,7 +54,7 @@ type Stage2 interface {
 
 type Action interface {
 	Then(fn Handler) Action
-	ApplyMessage(ctx goka.Context, m *Context) (bool, error)
+	ApplyMessage(ctx goka.Context, m *shared.HubContext) (bool, error)
 }
 
 type chain builder.Builder
@@ -107,7 +107,7 @@ func (b chain) Then(fn Handler) Action {
 	return builder.Append(b, "Handlers", fn).(Action)
 }
 
-func (b chain) ApplyMessage(ctx goka.Context, m *Context) (bool, error) {
+func (b chain) ApplyMessage(ctx goka.Context, m *shared.HubContext) (bool, error) {
 	data := builder.GetStruct(b).(ActionData)
 	if len(data.Handlers) == 0 {
 		return false, errors.New("HubChain: no handler defined")

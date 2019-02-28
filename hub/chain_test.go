@@ -3,6 +3,7 @@ package hub
 import (
 	"testing"
 
+	"github.com/denkhaus/nksh/shared"
 	"github.com/lovoo/goka"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,19 +21,13 @@ var update = `
 	  }	
 }`
 
-func nodeInvisible(arg interface{}) bool {
-	m:= arg.(Context)
-	return m.Properties.MustBool("visible") == false
-}
-
 func TestChain(t *testing.T) {
 
-	codec := ContextCodec{}
-
+	codec := shared.HubContextCodec{}
 	m, err := codec.Decode([]byte(update))
 	assert.NoError(t, err, "decode raw message")
 
-	ctx, ok := m.(*Context)
+	ctx, ok := m.(*shared.HubContext)
 	assert.True(t, ok)
 
 	handlerTriggered := 0
@@ -46,7 +41,7 @@ func TestChain(t *testing.T) {
 	subordinatesUpdated := onUpdated.And(subordinates)
 
 	condition := subordinatesUpdated.Then(
-		func(ctx goka.Context, m *Context) error {
+		func(ctx goka.Context, m *shared.HubContext) error {
 			handlerTriggered++
 			return nil
 		})
@@ -58,8 +53,8 @@ func TestChain(t *testing.T) {
 	assert.True(t, hit, "condition hit")
 
 	handlerTriggered = 0
-	var onSubordinatesInvisibled = subordinatesUpdated.With(nodeInvisible).
-		Then(func(ctx goka.Context, m *Context) error {
+	var onSubordinatesInvisibled = subordinatesUpdated.With(IsNodeInvisible).
+		Then(func(ctx goka.Context, m *shared.HubContext) error {
 			handlerTriggered++
 			return nil
 		})

@@ -1,10 +1,8 @@
-package event
+package shared
 
 import (
 	"encoding/json"
 	"time"
-
-	"github.com/denkhaus/nksh/shared"
 )
 
 type ChangeInfo struct {
@@ -86,54 +84,54 @@ func (p ChangeInfos) Deleted(field string) bool {
 	return false
 }
 
-type Context struct {
-	TimeStamp   time.Time         `json:"time_stamp"`
-	Operation   shared.Operation  `json:"operation"`
-	NodeID      int64             `json:"node_id"`
-	ChangeInfos ChangeInfos       `json:"change_infos"`
-	Properties  shared.Properties `json:"properties"`
+type EventContext struct {
+	TimeStamp   time.Time   `json:"time_stamp"`
+	Operation   Operation   `json:"operation"`
+	NodeID      int64       `json:"node_id"`
+	ChangeInfos ChangeInfos `json:"change_infos"`
+	Properties  Properties  `json:"properties"`
 }
 
-func (p *Context) Match(
+func (p *EventContext) Match(
 
-	operation shared.Operation,
+	operation Operation,
 	fieldName string,
-	fieldOperation shared.Operation,
-	conditions shared.EvalFuncs,
+	fieldOperation Operation,
+	conditions EvalFuncs,
 
 ) bool {
 
-	matcher := shared.NewMatcher(
-		func() (bool, shared.EvalFunc) {
-			return p.Operation == shared.UpdatedOperation &&
+	matcher := NewMatcher(
+		func() (bool, EvalFunc) {
+			return p.Operation == UpdatedOperation &&
 					p.Operation == operation &&
 					fieldName != "" && fieldOperation != "",
 				func(_ interface{}) bool {
 					switch fieldOperation {
-					case shared.CreatedOperation:
+					case CreatedOperation:
 						return p.ChangeInfos.Created(fieldName)
-					case shared.UpdatedOperation:
+					case UpdatedOperation:
 						return p.ChangeInfos.Updated(fieldName)
-					case shared.DeletedOperation:
+					case DeletedOperation:
 						return p.ChangeInfos.Deleted(fieldName)
 					default:
 						return false
 					}
 				}
 		},
-		func() (bool, shared.EvalFunc) {
+		func() (bool, EvalFunc) {
 			return operation != "",
 				func(_ interface{}) bool {
 					return p.Operation == operation
 				}
 		},
-		shared.MatchConditions(conditions...),
+		MatchConditions(conditions...),
 	)
 
 	return matcher.Eval(*p)
 }
 
-func (p *Context) buildChanges(before bool, props map[string]interface{}) {
+func (p *EventContext) BuildChanges(before bool, props map[string]interface{}) {
 	for field, value := range props {
 		if info, ok := p.ChangeInfos[field]; ok {
 			if before {
@@ -157,13 +155,13 @@ func (p *Context) buildChanges(before bool, props map[string]interface{}) {
 	}
 }
 
-type ContextCodec struct{}
+type EventContextCodec struct{}
 
-func (p *ContextCodec) Encode(value interface{}) ([]byte, error) {
+func (p *EventContextCodec) Encode(value interface{}) ([]byte, error) {
 	return json.Marshal(value)
 }
 
-func (p *ContextCodec) Decode(data []byte) (interface{}, error) {
-	var m Context
+func (p *EventContextCodec) Decode(data []byte) (interface{}, error) {
+	var m EventContext
 	return &m, json.Unmarshal(data, &m)
 }

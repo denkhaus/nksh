@@ -1,10 +1,7 @@
-package nksh
+package shared
 
 import (
 	"time"
-
-	"github.com/denkhaus/nksh/hub"
-	"github.com/denkhaus/nksh/shared"
 
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
@@ -19,13 +16,11 @@ var (
 type OnRecordFunc func(rec neo4j.Record) error
 
 type Executor struct {
-	Driver  neo4j.Driver
 	Context goka.Context
 }
 
-func NewExecutor(ctx goka.Context, driver neo4j.Driver) *Executor {
+func NewExecutor(ctx goka.Context) *Executor {
 	ex := Executor{
-		Driver:  driver,
 		Context: ctx,
 	}
 
@@ -33,7 +28,7 @@ func NewExecutor(ctx goka.Context, driver neo4j.Driver) *Executor {
 }
 
 func (p *Executor) newSession() (neo4j.Session, error) {
-	session, err := p.Driver.Session(neo4j.AccessModeWrite)
+	session, err := Neo4jDriver.Session(neo4j.AccessModeWrite)
 	if err != nil {
 		return nil, errors.Annotate(err, "Session")
 	}
@@ -92,11 +87,11 @@ func (p *Executor) NotifySuperOrdinates(
 
 	sender string,
 	senderID int64,
-	operation shared.Operation,
-	props shared.Properties,
+	operation Operation,
+	props Properties,
 
 ) error {
-	msg := hub.Context{
+	msg := HubContext{
 		Sender:     sender,
 		Operation:  operation,
 		SenderID:   senderID,
@@ -117,7 +112,7 @@ func (p *Executor) NotifySuperOrdinates(
 	return nil
 }
 
-func (p *Executor) ApplyContext(nodeID int64, ctx shared.Properties) error {
+func (p *Executor) ApplyContext(nodeID int64, ctx Properties) error {
 	session, err := p.newSession()
 	if err != nil {
 		return errors.Annotate(err, "newSession")
@@ -162,7 +157,7 @@ func (p *Executor) ApplyContext(nodeID int64, ctx shared.Properties) error {
 	return nil
 }
 
-func (p *Executor) Run(cypher string, ctx shared.Properties, onRecord OnRecordFunc) error {
+func (p *Executor) Run(cypher string, ctx Properties, onRecord OnRecordFunc) error {
 	session, err := p.newSession()
 	if err != nil {
 		return errors.Annotate(err, "newSession")

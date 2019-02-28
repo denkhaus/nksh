@@ -49,15 +49,15 @@ type Neo4jMessage struct {
 	Payload Neo4jPayload `json:"payload"`
 }
 
-func (p *Neo4jMessage) ToContext() (*Context, error) {
+func (p *Neo4jMessage) ToContext() (*shared.EventContext, error) {
 	id, err := strconv.ParseInt(p.Payload.ID, 10, 64)
 	if err != nil {
 		return nil, errors.Annotate(err, "ParseInt [id]")
 	}
 
-	n := Context{
+	n := shared.EventContext{
 		NodeID:      id,
-		ChangeInfos: make(ChangeInfos),
+		ChangeInfos: make(shared.ChangeInfos),
 		Operation:   p.Meta.Operation,
 		TimeStamp: time.Unix(0,
 			p.Meta.Timestamp*int64(time.Millisecond),
@@ -67,14 +67,14 @@ func (p *Neo4jMessage) ToContext() (*Context, error) {
 	switch p.Meta.Operation {
 	case "deleted":
 		n.Properties = p.Payload.Before.Properties
-		n.buildChanges(true, p.Payload.Before.Properties)
+		n.BuildChanges(true, p.Payload.Before.Properties)
 	case "created":
 		n.Properties = p.Payload.After.Properties
-		n.buildChanges(false, p.Payload.After.Properties)
+		n.BuildChanges(false, p.Payload.After.Properties)
 	case "updated":
 		n.Properties = p.Payload.After.Properties
-		n.buildChanges(false, p.Payload.After.Properties)
-		n.buildChanges(true, p.Payload.Before.Properties)
+		n.BuildChanges(false, p.Payload.After.Properties)
+		n.BuildChanges(true, p.Payload.Before.Properties)
 	}
 
 	// remove unchanged properties

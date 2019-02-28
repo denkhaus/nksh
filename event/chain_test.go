@@ -3,6 +3,7 @@ package event
 import (
 	"testing"
 
+	"github.com/denkhaus/nksh/shared"
 	"github.com/lovoo/goka"
 	"github.com/stretchr/testify/assert"
 )
@@ -64,12 +65,11 @@ func TestChain(t *testing.T) {
 			Chain.OnFieldUpdated("first_name"),
 			Chain.OnFieldCreated("geo"),
 			Chain.OnFieldDeleted("street"),
-		).Not(
-			Chain.OnFieldUpdated("email"),
-		).Then(func(ctx goka.Context, m *Context) error {
-		handlerTriggered++
-		return nil
-	})
+		).Not(Chain.OnFieldUpdated("email")).
+		Then(func(ctx goka.Context, m *shared.EventContext) error {
+			handlerTriggered++
+			return nil
+		})
 
 	hit, err := condition.ApplyMessage(nil, ctx)
 	assert.NoError(t, err, "apply message")

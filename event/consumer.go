@@ -34,8 +34,8 @@ func handleInputEvents(ctx goka.Context, msg interface{}, actions ...Action) err
 
 // receives input messages, sends hub messages
 func CreateConsumerDefaults(label string, actions ...Action) shared.DispatcherFunc {
-	group := goka.Group(fmt.Sprintf("%s<->Input", label))
-	inputStream := goka.Stream(fmt.Sprintf("Input->%s", label))
+	group := goka.Group(fmt.Sprintf("%s_Input", label))
+	inputStream := goka.Stream(fmt.Sprintf("Input2%s", label))
 	return CreateConsumer(group, inputStream, shared.HubStream, actions...)
 }
 

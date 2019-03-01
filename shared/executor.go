@@ -65,7 +65,7 @@ func (p *Executor) enumerateSuperOrdinates(
 		return errors.Annotate(err, "Run")
 	}
 
-	if result.Next() {
+	for result.Next() {
 		if i, ok := result.Record().Get("id"); ok {
 			id := i.(int64)
 			if l, ok := result.Record().Get("labels"); ok {
@@ -90,7 +90,7 @@ func (p *Executor) NotifySuperOrdinates(
 	operation Operation,
 	props Properties,
 
-) error {	
+) error {
 
 	p.enumerateSuperOrdinates(senderID, func(id int64, labels []interface{}) error {
 		for _, l := range labels {
@@ -100,11 +100,11 @@ func (p *Executor) NotifySuperOrdinates(
 				Operation:  operation,
 				SenderID:   senderID,
 				Properties: props,
-				Receiver:l.(string),
-				ReceiverID : id,
-			}			
-			
-			log.Infof("%s->%s notify superordinate:%v",sender, msg.Receiver,msg)
+				Receiver:   l.(string),
+				ReceiverID: id,
+			}
+
+			log.Infof("%s->%s notify superordinate:%v", sender, msg.Receiver, msg)
 			p.Context.Emit(HubStream, ComposeKey(msg.Receiver, id), msg)
 		}
 

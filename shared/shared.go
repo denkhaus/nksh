@@ -6,7 +6,14 @@ import (
 	"math/rand"
 
 	"github.com/lovoo/goka"
+	"github.com/sirupsen/logrus"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
+)
+
+
+
+var (
+	log logrus.FieldLogger = logrus.New().WithField("package", "shared")
 )
 
 type DispatcherFunc func(ctx context.Context, kServers, zServers []string) func() error

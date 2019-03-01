@@ -90,20 +90,22 @@ func (p *Executor) NotifySuperOrdinates(
 	operation Operation,
 	props Properties,
 
-) error {
-	msg := HubContext{
-		Sender:     sender,
-		Operation:  operation,
-		SenderID:   senderID,
-		Properties: props,
-	}
+) error {	
 
 	p.enumerateSuperOrdinates(senderID, func(id int64, labels []interface{}) error {
 		for _, l := range labels {
-			label := l.(string)
-			msg.Receiver = label
-			msg.ReceiverID = id
-			p.Context.Emit(goka.Stream("Hub"), ComposeKey(label, id), msg)
+
+			msg := &HubContext{
+				Sender:     sender,
+				Operation:  operation,
+				SenderID:   senderID,
+				Properties: props,
+				Receiver:l.(string),
+				ReceiverID : id,
+			}			
+			
+			log.Infof("%s->%s notify superordinate:%v",sender, msg.Receiver,msg)
+			p.Context.Emit(HubStream, ComposeKey(msg.Receiver, id), msg)
 		}
 
 		return nil

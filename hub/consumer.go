@@ -2,7 +2,6 @@ package hub
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/denkhaus/nksh/shared"
 	"github.com/juju/errors"
@@ -31,10 +30,8 @@ func handleHubEvents(ctx goka.Context, msg interface{}, actions ...Action) error
 }
 
 // receives dedicated hub messages, sends hub messages
-func CreateConsumerDefaults(label string, actions ...Action) shared.DispatcherFunc {
-	group := goka.Group(fmt.Sprintf("%s_Hub", label))
-	inputStream := goka.Stream(fmt.Sprintf("Hub2%s", label))
-	return CreateConsumer(group, inputStream, shared.HubStream, actions...)
+func CreateConsumerDefaults(descr shared.EntityDescriptor, actions ...Action) shared.DispatcherFunc {
+	return CreateConsumer(descr.HubGroup(), descr.HubInputStream(), descr.HubOutputStream(), actions...)
 }
 
 func CreateConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...Action) shared.DispatcherFunc {

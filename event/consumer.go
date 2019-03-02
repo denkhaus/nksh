@@ -2,7 +2,6 @@ package event
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/lovoo/goka/kafka"
 
@@ -33,10 +32,8 @@ func handleInputEvents(ctx goka.Context, msg interface{}, actions ...Action) err
 }
 
 // receives input messages, sends hub messages
-func CreateConsumerDefaults(label string, actions ...Action) shared.DispatcherFunc {
-	group := goka.Group(fmt.Sprintf("%s_Input", label))
-	inputStream := goka.Stream(fmt.Sprintf("Input2%s", label))
-	return CreateConsumer(group, inputStream, shared.HubStream, actions...)
+func CreateConsumerDefaults(descr shared.EntityDescriptor, actions ...Action) shared.DispatcherFunc {
+	return CreateConsumer(descr.EventGroup(), descr.EventInputStream(), descr.EventOutputStream(), actions...)
 }
 
 func CreateConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...Action) shared.DispatcherFunc {

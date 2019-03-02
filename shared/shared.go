@@ -6,11 +6,9 @@ import (
 	"math/rand"
 
 	"github.com/lovoo/goka"
-	"github.com/sirupsen/logrus"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
+	"github.com/sirupsen/logrus"
 )
-
-
 
 var (
 	log logrus.FieldLogger = logrus.New().WithField("package", "shared")
@@ -82,4 +80,48 @@ func RandStringBytes(n int) string {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(b)
+}
+
+type EntityDescriptor interface {
+	HubInputStream() goka.Stream
+	HubOutputStream() goka.Stream
+	HubGroup() goka.Group
+	EventInputStream() goka.Stream
+	EventOutputStream() goka.Stream
+	EventGroup() goka.Group
+}
+
+type BaseDescriptor struct {
+	label string
+}
+
+func (p *BaseDescriptor) EventGroup() goka.Group {
+	return goka.Group(fmt.Sprintf("%s_Input", p.label))
+}
+
+func (p *BaseDescriptor) EventInputStream() goka.Stream {
+	return goka.Stream(goka.Stream(fmt.Sprintf("Input2%s", p.label)))
+}
+
+func (p *BaseDescriptor) EventOutputStream() goka.Stream {
+	return HubStream
+}
+
+func (p *BaseDescriptor) HubGroup() goka.Group {
+	return goka.Group(fmt.Sprintf("%s_Hub", p.label))
+}
+
+func (p *BaseDescriptor) HubInputStream() goka.Stream {
+	return goka.Stream(goka.Stream(fmt.Sprintf("Hub2%s", p.label)))
+}
+
+func (p *BaseDescriptor) HubOutputStream() goka.Stream {
+	return HubStream
+}
+
+func NewBaseDescriptor(label string) *BaseDescriptor {
+	d := &BaseDescriptor{
+		label: label,
+	}
+	return d
 }

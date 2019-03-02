@@ -7,16 +7,17 @@ import (
 	"github.com/lovoo/goka"
 )
 
-type Handler func(ctx goka.Context, m *shared.HubContext) error
+type Handler func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.HubContext) error
 
 type ActionData struct {
-	Sender     string
-	Operation  shared.Operation
-	Conditions shared.EvalFuncs
-	Handlers   []Handler
-	Or         []ActionData
-	And        []ActionData
-	Not        []ActionData
+	EntityDescriptor shared.EntityDescriptor
+	Sender           string
+	Operation        shared.Operation
+	Conditions       shared.EvalFuncs
+	Handlers         []Handler
+	Or               []ActionData
+	And              []ActionData
+	Not              []ActionData
 }
 
 func (p *ActionData) Match(m *shared.HubContext) bool {
@@ -54,7 +55,8 @@ type Stage2 interface {
 
 type Action interface {
 	Then(fn Handler) Action
-	ApplyMessage(ctx goka.Context, m *shared.HubContext) (bool, error)
+	applyMessage(ctx goka.Context, m *shared.HubContext) (bool, error)
+	setDescriptor(shared.EntityDescriptor) Action
 }
 
 type chain builder.Builder
@@ -107,7 +109,11 @@ func (b chain) Then(fn Handler) Action {
 	return builder.Append(b, "Handlers", fn).(Action)
 }
 
-func (b chain) ApplyMessage(ctx goka.Context, m *shared.HubContext) (bool, error) {
+func (b chain) setDescriptor(descr shared.EntityDescriptor) Action {
+	return builder.Set(b, "EntityDescriptor", descr).(Action)
+}
+
+func (b chain) applyContext(ctx goka.Context, m *shared.HubContext) (bool, error) {
 	data := builder.GetStruct(b).(ActionData)
 	if len(data.Handlers) == 0 {
 		return false, errors.New("HubChain: no handler defined")
@@ -115,7 +121,7 @@ func (b chain) ApplyMessage(ctx goka.Context, m *shared.HubContext) (bool, error
 
 	if data.Match(m) {
 		for _, handle := range data.Handlers {
-			if err := handle(ctx, m); err != nil {
+			if err := handle(ctx, data.EntityDescriptor, m); err != nil {
 				return false, errors.Annotate(err, "HandleEvent")
 			}
 		}

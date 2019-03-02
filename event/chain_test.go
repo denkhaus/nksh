@@ -66,12 +66,12 @@ func TestChain(t *testing.T) {
 			Chain.OnFieldCreated("geo"),
 			Chain.OnFieldDeleted("street"),
 		).Not(Chain.OnFieldUpdated("email")).
-		Then(func(ctx goka.Context, m *shared.EventContext) error {
+		Then(func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.EventContext) error {
 			handlerTriggered++
 			return nil
 		})
 
-	hit, err := condition.ApplyMessage(nil, ctx)
+	hit, err := condition.applyContext(nil, ctx)
 	assert.NoError(t, err, "apply message")
 	assert.Equal(t, 1, handlerTriggered, "handler triggered")
 	assert.True(t, hit, "condition hit")

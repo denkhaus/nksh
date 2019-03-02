@@ -3,12 +3,10 @@ package event
 import (
 	"context"
 
-	"github.com/lovoo/goka/kafka"
-
 	"github.com/denkhaus/nksh/shared"
-
 	"github.com/juju/errors"
 	"github.com/lovoo/goka"
+	"github.com/lovoo/goka/kafka"
 )
 
 func handleInputEvents(ctx goka.Context, msg interface{}, actions ...Action) error {
@@ -18,7 +16,7 @@ func handleInputEvents(ctx goka.Context, msg interface{}, actions ...Action) err
 	}
 
 	for _, action := range actions {
-		handled, err := action.ApplyMessage(ctx, m)
+		handled, err := action.applyContext(ctx, m)
 		if err != nil {
 			return errors.Annotate(err, "ApplyMessage")
 		}
@@ -33,7 +31,16 @@ func handleInputEvents(ctx goka.Context, msg interface{}, actions ...Action) err
 
 // receives input messages, sends hub messages
 func CreateConsumerDefaults(descr shared.EntityDescriptor, actions ...Action) shared.DispatcherFunc {
-	return CreateConsumer(descr.EventGroup(), descr.EventInputStream(), descr.EventOutputStream(), actions...)
+	act := []Action{}
+	for _, action := range actions {
+		act = append(act, action.setDescriptor(descr))
+	}
+	return CreateConsumer(
+		descr.EventGroup(),
+		descr.EventInputStream(),
+		descr.EventOutputStream(),
+		act...,
+	)
 }
 
 func CreateConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...Action) shared.DispatcherFunc {

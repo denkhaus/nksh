@@ -6,8 +6,8 @@ import (
 )
 
 func SetVisibility(visible bool) Handler {
-	return func(ctx goka.Context, m *shared.HubContext) error {
-		log.Infof("set visibility to %T:%+v", visible, m)
+	return func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.HubContext) error {
+		log.Infof("set visibility to %t:%+v", visible, m)
 
 		exec := shared.NewExecutor(ctx)
 		return exec.ApplyContext(m.ReceiverID, shared.Properties{

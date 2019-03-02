@@ -7,17 +7,18 @@ import (
 	"github.com/lovoo/goka"
 )
 
-type Handler func(ctx goka.Context, m *shared.EventContext) error
+type Handler func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.EventContext) error
 
 type ActionData struct {
-	Operation      shared.Operation
-	FieldOperation shared.Operation
-	FieldName      string
-	Handlers       []Handler
-	Conditions     []shared.EvalFunc
-	Or             []ActionData
-	And            []ActionData
-	Not            []ActionData
+	EntityDescriptor shared.EntityDescriptor
+	Operation        shared.Operation
+	FieldOperation   shared.Operation
+	FieldName        string
+	Handlers         []Handler
+	Conditions       []shared.EvalFunc
+	Or               []ActionData
+	And              []ActionData
+	Not              []ActionData
 }
 
 func (p *ActionData) Match(m *shared.EventContext) bool {
@@ -58,7 +59,8 @@ type Stage2 interface {
 
 type Action interface {
 	Then(fn Handler) Action
-	ApplyMessage(ctx goka.Context, m *shared.EventContext) (bool, error)
+	applyContext(ctx goka.Context, m *shared.EventContext) (bool, error)
+	setDescriptor(descr shared.EntityDescriptor) Action
 }
 
 type chain builder.Builder
@@ -127,7 +129,11 @@ func (b chain) Then(fn Handler) Action {
 	return builder.Append(b, "Handlers", fn).(Action)
 }
 
-func (b chain) ApplyMessage(ctx goka.Context, m *shared.EventContext) (bool, error) {
+func (b chain) setDescriptor(descr shared.EntityDescriptor) Action {
+	return builder.Set(b, "EntityDescriptor", descr).(Action)
+}
+
+func (b chain) applyContext(ctx goka.Context, m *shared.EventContext) (bool, error) {
 	data := builder.GetStruct(b).(ActionData)
 	if len(data.Handlers) == 0 {
 		return false, errors.New("EventChain: no handler defined")
@@ -135,7 +141,7 @@ func (b chain) ApplyMessage(ctx goka.Context, m *shared.EventContext) (bool, err
 
 	if data.Match(m) {
 		for _, handle := range data.Handlers {
-			if err := handle(ctx, m); err != nil {
+			if err := handle(ctx, data.EntityDescriptor, m); err != nil {
 				return false, errors.Annotate(err, "HandleEvent")
 			}
 		}

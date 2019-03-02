@@ -6,12 +6,12 @@ import (
 	"github.com/lovoo/goka"
 )
 
-func NotifySuperOrdinates(entityLabel string) Handler {
-	return func(ctx goka.Context, m *shared.EventContext) error {
-		log.Infof("notify superordinates:%+v", m)
+func NotifySuperOrdinates() Handler {
+	return func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.EventContext) error {
+		log.Infof("notify superordinates:%v", m)
 
 		exec := shared.NewExecutor(ctx)
-		if err := exec.NotifySuperOrdinates(entityLabel, m.NodeID,
+		if err := exec.NotifySuperOrdinates(descr.Label(), m.NodeID,
 			shared.UpdatedOperation, m.Properties,
 		); err != nil {
 			return errors.Annotate(err, "NotifySuperOrdinates")

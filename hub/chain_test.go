@@ -41,12 +41,12 @@ func TestChain(t *testing.T) {
 	subordinatesUpdated := onUpdated.And(subordinates)
 
 	condition := subordinatesUpdated.Then(
-		func(ctx goka.Context, m *shared.HubContext) error {
+		func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.HubContext) error {
 			handlerTriggered++
 			return nil
 		})
 
-	hit, err := condition.ApplyMessage(nil, ctx)
+	hit, err := condition.applyMessage(nil, ctx)
 	assert.NoError(t, err, "apply message")
 	assert.Equal(t, 1, handlerTriggered, "handler triggered")
 
@@ -54,12 +54,12 @@ func TestChain(t *testing.T) {
 
 	handlerTriggered = 0
 	var onSubordinatesInvisibled = subordinatesUpdated.With(IsNodeInvisible).
-		Then(func(ctx goka.Context, m *shared.HubContext) error {
+		Then(func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.HubContext) error {
 			handlerTriggered++
 			return nil
 		})
 
-	hit, err = onSubordinatesInvisibled.ApplyMessage(nil, ctx)
+	hit, err = onSubordinatesInvisibled.applyMessage(nil, ctx)
 	assert.NoError(t, err, "apply message")
 	assert.Equal(t, 1, handlerTriggered, "handler triggered")
 	assert.True(t, hit, "condition hit")

@@ -89,10 +89,15 @@ type EntityDescriptor interface {
 	EventInputStream() goka.Stream
 	EventOutputStream() goka.Stream
 	EventGroup() goka.Group
+	Label() string
 }
 
 type BaseDescriptor struct {
 	label string
+}
+
+func (p *BaseDescriptor) Label() string {
+	return p.label
 }
 
 func (p *BaseDescriptor) EventGroup() goka.Group {

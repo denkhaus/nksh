@@ -3,8 +3,6 @@ package event
 import (
 	"testing"
 
-	"github.com/denkhaus/nksh/shared"
-	"github.com/lovoo/goka"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,7 +64,7 @@ func TestChain(t *testing.T) {
 			Chain.OnFieldCreated("geo"),
 			Chain.OnFieldDeleted("street"),
 		).Not(Chain.OnFieldUpdated("email")).
-		Then(func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.EventContext) error {
+		Then(func(_ *HandlerContext) error {
 			handlerTriggered++
 			return nil
 		})

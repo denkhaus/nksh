@@ -3,16 +3,18 @@ package event
 import (
 	"github.com/denkhaus/nksh/shared"
 	"github.com/juju/errors"
-	"github.com/lovoo/goka"
 )
 
 func NotifySuperOrdinates() Handler {
-	return func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.EventContext) error {
-		log.Infof("notify superordinates:%v", m)
+	return func(ctx *HandlerContext) error {
+		log.Infof("notify superordinates: %v", ctx.EventContext)
 
-		exec := shared.NewExecutor(ctx)
-		if err := exec.NotifySuperOrdinates(descr.Label(), m.NodeID,
-			shared.UpdatedOperation, m.Properties,
+		exec := shared.NewExecutor(ctx.GokaContext)
+		if err := exec.NotifySuperOrdinates(
+			ctx.EntityDescriptor.Label(),
+			ctx.EventContext.NodeID,
+			shared.UpdatedOperation,
+			ctx.EventContext.Properties,
 		); err != nil {
 			return errors.Annotate(err, "NotifySuperOrdinates")
 		}

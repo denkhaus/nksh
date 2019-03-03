@@ -7,7 +7,13 @@ import (
 	"github.com/lovoo/goka"
 )
 
-type Handler func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.EventContext) error
+type HandlerContext struct {
+	GokaContext      goka.Context
+	EventContext     *shared.EventContext
+	EntityDescriptor shared.EntityDescriptor
+}
+
+type Handler func(ctx *HandlerContext) error
 
 type ActionData struct {
 	EntityDescriptor shared.EntityDescriptor
@@ -140,8 +146,14 @@ func (b chain) applyContext(ctx goka.Context, m *shared.EventContext) (bool, err
 	}
 
 	if data.Match(m) {
+		hCtx := HandlerContext{
+			GokaContext:      ctx,
+			EntityDescriptor: data.EntityDescriptor,
+			EventContext:     m,
+		}
+
 		for _, handle := range data.Handlers {
-			if err := handle(ctx, data.EntityDescriptor, m); err != nil {
+			if err := handle(&hCtx); err != nil {
 				return false, errors.Annotate(err, "HandleEvent")
 			}
 		}

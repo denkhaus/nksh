@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/denkhaus/nksh/shared"
-	"github.com/lovoo/goka"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +21,6 @@ var update = `
 }`
 
 func TestChain(t *testing.T) {
-
 	codec := shared.HubContextCodec{}
 	m, err := codec.Decode([]byte(update))
 	assert.NoError(t, err, "decode raw message")
@@ -30,37 +28,51 @@ func TestChain(t *testing.T) {
 	ctx, ok := m.(*shared.HubContext)
 	assert.True(t, ok)
 
-	handlerTriggered := 0
-	onUpdated := Chain.OnNodeUpdated()
+	var handledError error
+	thenTriggered := 0
+	elseTriggered := 0
 
-	var subordinates = Chain.From("Person").Or(
-		Chain.From("PersonPosition"),
-		Chain.From("Photo"),
+	onUpdated := OnNodeUpdated()
+
+	var subordinates = From("Person").Or(
+		From("PersonPosition"),
+		From("Photo"),
 	)
 
 	subordinatesUpdated := onUpdated.And(subordinates)
 
-	condition := subordinatesUpdated.Then(
-		func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.HubContext) error {
-			handlerTriggered++
-			return nil
-		})
+	condition := If(
+		subordinatesUpdated,
+	).Then(func(ctx *shared.HandlerContext) error {
+		thenTriggered++
+		return nil
+	}).Else(func(_ *shared.HandlerContext) error {
+		elseTriggered++
+		return nil
+	}).Catch(func(err error) {
+		handledError = err
+	})
 
-	hit, err := condition.applyMessage(nil, ctx)
-	assert.NoError(t, err, "apply message")
-	assert.Equal(t, 1, handlerTriggered, "handler triggered")
+	state := condition.Execute(nil, ctx)
+	assert.NoError(t, handledError, "handled error")
+	assert.Equal(t, 1, thenTriggered, "then triggered")
+	assert.Equal(t, 0, elseTriggered, "else triggered")
+	assert.Equal(t, shared.ChainHandledStateThen, state, "condition hit")
 
-	assert.True(t, hit, "condition hit")
+	thenTriggered = 0
+	var onSubordinatesInvisibled = If(
+		subordinatesUpdated.And(
+			With(IsNodeInvisible),
+		),
+	).Then(func(ctx *shared.HandlerContext) error {
+		thenTriggered++
+		return nil
+	}).Catch(func(err error) {
+		handledError = err
+	})
 
-	handlerTriggered = 0
-	var onSubordinatesInvisibled = subordinatesUpdated.With(IsNodeInvisible).
-		Then(func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.HubContext) error {
-			handlerTriggered++
-			return nil
-		})
-
-	hit, err = onSubordinatesInvisibled.applyMessage(nil, ctx)
-	assert.NoError(t, err, "apply message")
-	assert.Equal(t, 1, handlerTriggered, "handler triggered")
-	assert.True(t, hit, "condition hit")
+	state = onSubordinatesInvisibled.Execute(nil, ctx)
+	assert.NoError(t, handledError, "handled error")
+	assert.Equal(t, 1, thenTriggered, "then triggered")
+	assert.Equal(t, shared.ChainHandledStateThen, state, "condition hit")
 }

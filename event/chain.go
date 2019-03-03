@@ -58,11 +58,6 @@ type Combinable interface {
 	Not(not ...Combinable) Combinable
 }
 
-type Action interface {
-	Do(fns ...shared.Handler) Catchable
-	LoadEntityContext(entityID int64) Action
-}
-
 type Catchable interface {
 	Catch(fn shared.ErrorHandler) Executable
 }
@@ -218,9 +213,6 @@ var actionChain = builder.Register(chain{}, ActionData{})
 
 func If(comb Combinable) Proceedable {
 	return comb.(Proceedable)
-}
-func Do(fns ...shared.Handler) Catchable {
-	return actionChain.(Action).Do(fns...)
 }
 func OnNodeCreated() Combinable {
 	return actionChain.(Selectable).OnNodeCreated()

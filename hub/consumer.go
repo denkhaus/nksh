@@ -9,20 +9,15 @@ import (
 	"github.com/lovoo/goka/kafka"
 )
 
-func handleHubEvents(ctx goka.Context, msg interface{}, actions ...Action) error {
+func handleHubEvents(ctx goka.Context, msg interface{}, exes ...Executable) error {
 	m, ok := msg.(*shared.HubContext)
 	if !ok {
 		return errors.Errorf("invalid message type %+v", msg)
 	}
 
-	for _, action := range actions {
-		handled, err := action.applyMessage(ctx, m)
-		if err != nil {
-			return errors.Annotate(err, "applyMessage")
-		}
-
-		if !handled {
-			log.Warningf("unhandled hub msg [no match]: %+v", m)
+	for _, exe := range exes {
+		if state := exe.Execute(ctx, m); state.Failed() {
+			log.Warningf("unhandled hub msg [%s]: %+v", state, m)
 		}
 	}
 
@@ -30,25 +25,25 @@ func handleHubEvents(ctx goka.Context, msg interface{}, actions ...Action) error
 }
 
 // receives dedicated hub messages, sends hub messages
-func CreateConsumerDefaults(descr shared.EntityDescriptor, actions ...Action) shared.DispatcherFunc {
-	act := []Action{}
-	for _, action := range actions {
-		act = append(act, action.setDescriptor(descr))
+func CreateConsumerDefaults(descr shared.EntityDescriptor, execs ...Executable) shared.DispatcherFunc {
+	exe := []Executable{}
+	for _, exec := range execs {
+		exe = append(exe, exec.SetDescriptor(descr))
 	}
 	return CreateConsumer(
 		descr.HubGroup(),
 		descr.HubInputStream(),
 		descr.HubOutputStream(),
-		act...,
+		exe...,
 	)
 }
 
-func CreateConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...Action) shared.DispatcherFunc {
+func CreateConsumer(group goka.Group, inputStream, outputStream goka.Stream, execs ...Executable) shared.DispatcherFunc {
 	return func(ctx context.Context, kServers, zServers []string) func() error {
 		return func() error {
 			g := goka.DefineGroup(group,
 				goka.Input(inputStream, new(shared.HubContextCodec), func(ctx goka.Context, msg interface{}) {
-					if err := handleHubEvents(ctx, msg, actions...); err != nil {
+					if err := handleHubEvents(ctx, msg, execs...); err != nil {
 						log.Error(errors.Annotate(err, "handleHubEvents"))
 					}
 				}),

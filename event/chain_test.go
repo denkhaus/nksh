@@ -3,6 +3,8 @@ package event
 import (
 	"testing"
 
+	"github.com/denkhaus/nksh/shared"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,9 +47,7 @@ var update = `
 `
 
 func TestChain(t *testing.T) {
-
 	codec := Neo4jMessageCodec{}
-
 	m, err := codec.Decode([]byte(update))
 	assert.NoError(t, err, "decode raw message")
 
@@ -57,20 +57,23 @@ func TestChain(t *testing.T) {
 	ctx, err := msg.ToContext()
 	assert.NoError(t, err, "create context")
 
+	var handledError error
 	handlerTriggered := 0
-	condition := Chain.OnNodeUpdated().
-		And(
-			Chain.OnFieldUpdated("first_name"),
-			Chain.OnFieldCreated("geo"),
-			Chain.OnFieldDeleted("street"),
-		).Not(Chain.OnFieldUpdated("email")).
-		Then(func(_ *HandlerContext) error {
-			handlerTriggered++
-			return nil
-		})
+	condition := Chain.OnNodeUpdated().And(
+		Chain.OnFieldUpdated("first_name"),
+		Chain.OnFieldCreated("geo"),
+		Chain.OnFieldDeleted("street"),
+	).Not(
+		Chain.OnFieldUpdated("email"),
+	).Then().Do(func(_ *shared.HandlerContext) error {
+		handlerTriggered++
+		return nil
+	}).Catch(func(err error) {
+		handledError = err
+	})
 
-	hit, err := condition.applyContext(nil, ctx)
-	assert.NoError(t, err, "apply message")
+	hit := condition.Execute(nil, ctx)
+	assert.NoError(t, handledError, "handled error")
 	assert.Equal(t, 1, handlerTriggered, "handler triggered")
 	assert.True(t, hit, "condition hit")
 }

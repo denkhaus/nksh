@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/juju/errors"
-	"github.com/lovoo/goka"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 )
 
@@ -13,15 +12,29 @@ var (
 	ErrInvalidOperationResult = errors.New("invalid operation result")
 )
 
+var (
+	cypherApplyProperties = CypherQuery(`
+		MATCH (p) 
+		WHERE ID(p) = $id
+		SET p+= $ctx 
+		SET p.modifiedAt = $modifiedAt		
+	`)
+	cypherEnumerateSuperOrdinates = CypherQuery(`
+		MATCH (super)-[]->(p) 
+		WHERE id(p) = $id 
+		RETURN ID(super) as id, labels(super) as labels
+	`)
+)
+
 type OnRecordFunc func(rec neo4j.Record) error
 
 type Executor struct {
-	Context goka.Context
+	*HandlerContext
 }
 
-func NewExecutor(ctx goka.Context) *Executor {
+func NewExecutor(ctx *HandlerContext) *Executor {
 	ex := Executor{
-		Context: ctx,
+		HandlerContext: ctx,
 	}
 
 	return &ex
@@ -43,44 +56,49 @@ func (p *Executor) enumerateSuperOrdinates(
 
 ) error {
 
-	session, err := p.newSession()
-	if err != nil {
-		return errors.Annotate(err, "newSession")
-	}
-
-	defer session.Close()
-
-	result, err := session.Run(`
-
-		MATCH (super)-[]->(p) 
-		WHERE id(p) = $id 
-		RETURN ID(super) as id, labels(super) as labels
-
-		`,
-		map[string]interface{}{
+	err := p.Run(cypherEnumerateSuperOrdinates,
+		Properties{
 			"id": senderID,
+		}, func(record neo4j.Record) error {
+			if i, ok := record.Get("id"); ok {
+				id := i.(int64)
+				if l, ok := record.Get("labels"); ok {
+					if err := enumerate(id, l.([]interface{})); err != nil {
+						return errors.Annotate(err, "enumerate")
+					}
+				}
+			}
+
+			return nil
 		})
 
 	if err != nil {
 		return errors.Annotate(err, "Run")
 	}
 
-	for result.Next() {
-		if i, ok := result.Record().Get("id"); ok {
-			id := i.(int64)
-			if l, ok := result.Record().Get("labels"); ok {
-				if err := enumerate(id, l.([]interface{})); err != nil {
-					return errors.Annotate(err, "enumerate")
-				}
+	return nil
+}
+
+func (p *Executor) BuildEntityContext(nodeID int64) (*EntityContext, error) {
+	ctx := EntityContext{
+		NodeID: nodeID,
+	}
+
+	for entity, query := range p.EntityDescriptor.ContextDef() {
+		err := p.Run(query, Properties{
+			"id": nodeID,
+		}, func(record neo4j.Record) error {
+			if res, ok := record.Get("result"); ok {
+				ctx.Append(entity, res.(map[string]interface{}))
 			}
+			return nil
+		})
+		if err != nil {
+			return nil, errors.Annotate(err, "Run")
 		}
 	}
 
-	if err = result.Err(); err != nil {
-		return errors.Annotate(err, "Err")
-	}
-
-	return nil
+	return &ctx, nil
 }
 
 func (p *Executor) NotifySuperOrdinates(
@@ -105,7 +123,7 @@ func (p *Executor) NotifySuperOrdinates(
 			}
 
 			log.Infof("%s->%s notify superordinate:%v", sender, msg.Receiver, msg)
-			p.Context.Emit(HubStream, ComposeKey(msg.Receiver, id), msg)
+			p.GokaContext.Emit(HubStream, ComposeKey(msg.Receiver, id), msg)
 		}
 
 		return nil
@@ -114,52 +132,22 @@ func (p *Executor) NotifySuperOrdinates(
 	return nil
 }
 
-func (p *Executor) ApplyContext(nodeID int64, ctx Properties) error {
-	session, err := p.newSession()
-	if err != nil {
-		return errors.Annotate(err, "newSession")
-	}
-
-	defer session.Close()
-
-	result, err := session.Run(`
-
-		MATCH (p) 
-		WHERE ID(p) = $id
-		SET p+= $ctx 
-		RETURN ID(p) as result
-
-		`,
-		map[string]interface{}{
+func (p *Executor) ApplyProperties(nodeID int64, ctx Properties) error {
+	err := p.Run(cypherApplyProperties,
+		Properties{
 			"id":         nodeID,
 			"modifiedAt": time.Now().UTC(),
 			"ctx":        ctx,
-		})
+		}, nil)
 
 	if err != nil {
 		return errors.Annotate(err, "Run")
-	}
-
-	if result.Next() {
-		if res, ok := result.Record().Get("result"); ok {
-			if res.(int64) != nodeID {
-				return ErrInvalidOperationResult
-			}
-		} else {
-			return ErrEmptyOperationResult
-		}
-	} else {
-		return ErrEmptyOperationResult
-	}
-
-	if err = result.Err(); err != nil {
-		return errors.Annotate(err, "Err")
 	}
 
 	return nil
 }
 
-func (p *Executor) Run(cypher string, ctx Properties, onRecord OnRecordFunc) error {
+func (p *Executor) Run(cypher CypherQuery, ctx Properties, onRecord OnRecordFunc) error {
 	session, err := p.newSession()
 	if err != nil {
 		return errors.Annotate(err, "newSession")
@@ -167,14 +155,16 @@ func (p *Executor) Run(cypher string, ctx Properties, onRecord OnRecordFunc) err
 
 	defer session.Close()
 
-	result, err := session.Run(cypher, ctx)
+	result, err := session.Run(cypher.String(), ctx)
 	if err != nil {
 		return errors.Annotate(err, "Run")
 	}
 
-	for result.Next() {
-		if err := onRecord(result.Record()); err != nil {
-			return errors.Annotate(err, "onRecord")
+	if onRecord != nil {
+		for result.Next() {
+			if err := onRecord(result.Record()); err != nil {
+				return errors.Annotate(err, "onRecord")
+			}
 		}
 	}
 

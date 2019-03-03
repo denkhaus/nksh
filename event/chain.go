@@ -7,21 +7,14 @@ import (
 	"github.com/lovoo/goka"
 )
 
-type HandlerContext struct {
-	GokaContext      goka.Context
-	EventContext     *shared.EventContext
-	EntityDescriptor shared.EntityDescriptor
-}
-
-type Handler func(ctx *HandlerContext) error
-
 type ActionData struct {
 	EntityDescriptor shared.EntityDescriptor
 	Operation        shared.Operation
 	FieldOperation   shared.Operation
+	ErrorHandlers    shared.ErrorHandlers
+	Handlers         shared.Handlers
+	Conditions       shared.EvalFuncs
 	FieldName        string
-	Handlers         []Handler
-	Conditions       []shared.EvalFunc
 	Or               []ActionData
 	And              []ActionData
 	Not              []ActionData
@@ -46,107 +39,143 @@ func (p *ActionData) Match(m *shared.EventContext) bool {
 	return result
 }
 
-type Stage1 interface {
-	OnNodeCreated() Stage2
-	OnNodeUpdated() Stage2
-	OnNodeDeleted() Stage2
-	OnFieldCreated(field string) Stage2
-	OnFieldUpdated(field string) Stage2
-	OnFieldDeleted(field string) Stage2
+type Selectable interface {
+	OnNodeCreated() Combinable
+	OnNodeUpdated() Combinable
+	OnNodeDeleted() Combinable
+	OnFieldCreated(field string) Combinable
+	OnFieldUpdated(field string) Combinable
+	OnFieldDeleted(field string) Combinable
+	With(fn shared.EvalFunc) Combinable
 }
 
-type Stage2 interface {
-	Or(or ...Stage2) Stage2
-	And(or ...Stage2) Stage2
-	Not(not ...Stage2) Stage2
-	With(fn shared.EvalFunc) Stage2
-	Then(fn Handler) Action
+type Combinable interface {
+	Or(or ...Combinable) Combinable
+	And(or ...Combinable) Combinable
+	Not(not ...Combinable) Combinable
+	Then() Action
 }
 
 type Action interface {
-	Then(fn Handler) Action
-	applyContext(ctx goka.Context, m *shared.EventContext) (bool, error)
-	setDescriptor(descr shared.EntityDescriptor) Action
+	Do(fn shared.Handler) Action
+	LoadEntityContext(entityID int64) Action
+	Catch(fn shared.ErrorHandler) Executable
+}
+
+type Executable interface {
+	Execute(ctx goka.Context, m *shared.EventContext) bool
+	SetDescriptor(descr shared.EntityDescriptor) Executable
 }
 
 type chain builder.Builder
 
-func (b chain) OnNodeCreated() Stage2 {
-	return builder.Set(b, "Operation", "created").(Stage2)
+func (b chain) OnNodeCreated() Combinable {
+	return builder.Set(b, "Operation", "created").(Combinable)
 }
 
-func (b chain) OnNodeUpdated() Stage2 {
+func (b chain) OnNodeUpdated() Combinable {
 	c := builder.Set(b, "Operation", shared.UpdatedOperation)
 	c = builder.Set(c, "FieldOperation", shared.UpdatedOperation)
-	return builder.Set(c, "FieldName", "*").(Stage2)
+	return builder.Set(c, "FieldName", "*").(Combinable)
 }
 
-func (b chain) OnNodeDeleted() Stage2 {
-	return builder.Set(b, "Operation", shared.DeletedOperation).(Stage2)
+func (b chain) OnNodeDeleted() Combinable {
+	return builder.Set(b, "Operation", shared.DeletedOperation).(Combinable)
 }
 
-func (b chain) OnFieldCreated(field string) Stage2 {
+func (b chain) OnFieldCreated(field string) Combinable {
 	c := builder.Set(b, "Operation", shared.UpdatedOperation)
 	c = builder.Set(c, "FieldOperation", shared.CreatedOperation)
-	return builder.Set(c, "FieldName", field).(Stage2)
+	return builder.Set(c, "FieldName", field).(Combinable)
 }
 
-func (b chain) OnFieldUpdated(field string) Stage2 {
+func (b chain) OnFieldUpdated(field string) Combinable {
 	c := builder.Set(b, "Operation", shared.UpdatedOperation)
 	c = builder.Set(c, "FieldOperation", shared.UpdatedOperation)
-	return builder.Set(c, "FieldName", field).(Stage2)
+	return builder.Set(c, "FieldName", field).(Combinable)
 }
 
-func (b chain) OnFieldDeleted(field string) Stage2 {
+func (b chain) OnFieldDeleted(field string) Combinable {
 	c := builder.Set(b, "Operation", shared.UpdatedOperation)
 	c = builder.Set(c, "FieldOperation", shared.DeletedOperation)
-	return builder.Set(c, "FieldName", field).(Stage2)
+	return builder.Set(c, "FieldName", field).(Combinable)
 }
 
-func (b chain) Or(or ...Stage2) Stage2 {
+func (b chain) Or(or ...Combinable) Combinable {
 	data := []interface{}{}
 	for _, o := range or {
 		data = append(data, builder.GetStruct(o))
 	}
-	return builder.Append(b, "Or", data...).(Stage2)
+	return builder.Append(b, "Or", data...).(Combinable)
 }
 
-func (b chain) And(and ...Stage2) Stage2 {
+func (b chain) And(and ...Combinable) Combinable {
 	data := []interface{}{}
 	for _, a := range and {
 		data = append(data, builder.GetStruct(a))
 	}
-	return builder.Append(b, "And", data...).(Stage2)
+	return builder.Append(b, "And", data...).(Combinable)
 }
 
-func (b chain) Not(not ...Stage2) Stage2 {
+func (b chain) Not(not ...Combinable) Combinable {
 	data := []interface{}{}
 	for _, n := range not {
 		data = append(data, builder.GetStruct(n))
 	}
-	return builder.Append(b, "Not", data...).(Stage2)
+	return builder.Append(b, "Not", data...).(Combinable)
 }
 
-func (b chain) With(fn shared.EvalFunc) Stage2 {
-	return builder.Append(b, "Conditions", fn).(Stage2)
+func (b chain) With(fn shared.EvalFunc) Combinable {
+	return builder.Append(b, "Conditions", fn).(Combinable)
 }
 
-func (b chain) Then(fn Handler) Action {
+func (b chain) Do(fn shared.Handler) Action {
 	return builder.Append(b, "Handlers", fn).(Action)
 }
 
-func (b chain) setDescriptor(descr shared.EntityDescriptor) Action {
-	return builder.Set(b, "EntityDescriptor", descr).(Action)
+func (b chain) Then() Action {
+	return Action(b)
 }
 
-func (b chain) applyContext(ctx goka.Context, m *shared.EventContext) (bool, error) {
+func (b chain) LoadEntityContext(entityID int64) Action {
+	return b.Do(func(ctx *shared.HandlerContext) (err error) {
+		exec := shared.NewExecutor(ctx)
+		ctx.EntityContext, err = exec.BuildEntityContext(entityID)
+		if err != nil {
+			return errors.Annotate(err, "BuildEntityContext")
+		}
+		return nil
+	})
+}
+
+func (b chain) Catch(fn shared.ErrorHandler) Executable {
+	return builder.Append(b, "ErrorHandlers", fn).(Executable)
+}
+
+func (b chain) SetDescriptor(descr shared.EntityDescriptor) Executable {
+	return builder.Set(b, "EntityDescriptor", descr).(Executable)
+}
+
+func (b chain) handleError(err error) {
+	if ehs, ok := builder.Get(b, "ErrorHandlers"); ok {
+		handlers := ehs.(shared.ErrorHandlers)
+		for _, handle := range handlers {
+			handle(err)
+		}
+	} else {
+		panic(errors.Annotate(err, "EventChain: no catch handler found"))
+	}
+}
+
+func (b chain) Execute(ctx goka.Context, m *shared.EventContext) bool {
 	data := builder.GetStruct(b).(ActionData)
 	if len(data.Handlers) == 0 {
-		return false, errors.New("EventChain: no handler defined")
+		b.handleError(errors.New("EventChain: no handler defined"))
+		return false
 	}
 
 	if data.Match(m) {
-		hCtx := HandlerContext{
+		hCtx := shared.HandlerContext{
 			GokaContext:      ctx,
 			EntityDescriptor: data.EntityDescriptor,
 			EventContext:     m,
@@ -154,14 +183,15 @@ func (b chain) applyContext(ctx goka.Context, m *shared.EventContext) (bool, err
 
 		for _, handle := range data.Handlers {
 			if err := handle(&hCtx); err != nil {
-				return false, errors.Annotate(err, "HandleEvent")
+				b.handleError(errors.Annotate(err, "HandleEvent"))
+				return false
 			}
 		}
 
-		return true, nil
+		return true
 	}
 
-	return false, nil
+	return false
 }
 
-var Chain = builder.Register(chain{}, ActionData{}).(Stage1)
+var Chain = builder.Register(chain{}, ActionData{}).(Selectable)

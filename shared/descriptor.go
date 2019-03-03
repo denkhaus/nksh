@@ -7,6 +7,11 @@ import (
 )
 
 type CypherQuery string
+
+func (p CypherQuery) String() string {
+	return string(p)
+}
+
 type ContextDefinition map[string]CypherQuery
 
 type EntityDescriptor interface {

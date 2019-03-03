@@ -9,19 +9,14 @@ import (
 	"github.com/lovoo/goka/kafka"
 )
 
-func handleInputEvents(ctx goka.Context, msg interface{}, actions ...Action) error {
+func handleInputEvents(ctx goka.Context, msg interface{}, exes ...Executable) error {
 	m, ok := msg.(*shared.EventContext)
 	if !ok {
 		return errors.Errorf("invalid message type %+v", msg)
 	}
 
-	for _, action := range actions {
-		handled, err := action.applyContext(ctx, m)
-		if err != nil {
-			return errors.Annotate(err, "ApplyMessage")
-		}
-
-		if !handled {
+	for _, exe := range exes {
+		if handled := exe.Execute(ctx, m); !handled {
 			log.Warningf("unhandled input msg [no match]: %+v", m)
 		}
 	}
@@ -30,25 +25,25 @@ func handleInputEvents(ctx goka.Context, msg interface{}, actions ...Action) err
 }
 
 // receives input messages, sends hub messages
-func CreateConsumerDefaults(descr shared.EntityDescriptor, actions ...Action) shared.DispatcherFunc {
-	act := []Action{}
-	for _, action := range actions {
-		act = append(act, action.setDescriptor(descr))
+func CreateConsumerDefaults(descr shared.EntityDescriptor, execs ...Executable) shared.DispatcherFunc {
+	exe := []Executable{}
+	for _, exec := range execs {
+		exe = append(exe, exec.SetDescriptor(descr))
 	}
 	return CreateConsumer(
 		descr.EventGroup(),
 		descr.EventInputStream(),
 		descr.EventOutputStream(),
-		act...,
+		exe...,
 	)
 }
 
-func CreateConsumer(group goka.Group, inputStream, outputStream goka.Stream, actions ...Action) shared.DispatcherFunc {
+func CreateConsumer(group goka.Group, inputStream, outputStream goka.Stream, execs ...Executable) shared.DispatcherFunc {
 	return func(ctx context.Context, kServers, zServers []string) func() error {
 		return func() error {
 			g := goka.DefineGroup(group,
 				goka.Input(inputStream, new(shared.EventContextCodec), func(ctx goka.Context, msg interface{}) {
-					if err := handleInputEvents(ctx, msg, actions...); err != nil {
+					if err := handleInputEvents(ctx, msg, execs...); err != nil {
 						log.Error(errors.Annotate(err, "handleInputEvents"))
 					}
 				}), goka.Output(outputStream, new(shared.EventContextCodec)),

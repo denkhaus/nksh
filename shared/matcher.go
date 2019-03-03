@@ -1,7 +1,8 @@
 package shared
 
-type EvalFuncs []EvalFunc
 type EvalFunc func(arg interface{}) bool
+type EvalFuncs []EvalFunc
+
 type MatcherFunc func() (bool, EvalFunc)
 
 type Matcher struct {

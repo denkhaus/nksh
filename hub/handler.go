@@ -2,17 +2,17 @@ package hub
 
 import (
 	"github.com/denkhaus/nksh/shared"
-	"github.com/lovoo/goka"
 )
 
-func SetVisibility(visible bool) Handler {
-	return func(ctx goka.Context, descr shared.EntityDescriptor, m *shared.HubContext) error {
-		log.Infof("set visibility to %t:%+v", visible, m)
+func SetVisibility(visible bool) shared.Handler {
+	return func(ctx *shared.HandlerContext) error {
+		log.Infof("set visibility to %t:%+v", visible, ctx.HubContext)
 
 		exec := shared.NewExecutor(ctx)
-		return exec.ApplyContext(m.ReceiverID, shared.Properties{
-			"visible": visible,
-		})
+		return exec.ApplyProperties(ctx.HubContext.ReceiverID,
+			shared.Properties{
+				"visible": visible,
+			})
 	}
 }
 

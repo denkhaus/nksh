@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/denkhaus/nksh/shared"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -59,12 +58,14 @@ func TestChain(t *testing.T) {
 
 	var handledError error
 	handlerTriggered := 0
-	condition := Chain.OnNodeUpdated().And(
-		Chain.OnFieldUpdated("first_name"),
-		Chain.OnFieldCreated("geo"),
-		Chain.OnFieldDeleted("street"),
-	).Not(
-		Chain.OnFieldUpdated("email"),
+	condition := If(
+		OnNodeUpdated().And(
+			OnFieldUpdated("first_name"),
+			OnFieldCreated("geo"),
+			OnFieldDeleted("street"),
+		).Not(
+			OnFieldUpdated("email"),
+		),
 	).Then().Do(func(_ *shared.HandlerContext) error {
 		handlerTriggered++
 		return nil

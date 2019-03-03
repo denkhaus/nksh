@@ -39,6 +39,8 @@ func (p *ActionData) Match(m *shared.EventContext) bool {
 	return result
 }
 
+type chain builder.Builder
+
 type Selectable interface {
 	OnNodeCreated() Combinable
 	OnNodeUpdated() Combinable
@@ -53,14 +55,13 @@ type Combinable interface {
 	Or(or ...Combinable) Combinable
 	And(or ...Combinable) Combinable
 	Not(not ...Combinable) Combinable
-	Then() Action
 }
 
 type Action interface {
 	Do(fns ...shared.Handler) Catchable
 	LoadEntityContext(entityID int64) Action
-	Catch(fn shared.ErrorHandler) Executable
 }
+
 type Catchable interface {
 	Catch(fn shared.ErrorHandler) Executable
 }
@@ -70,7 +71,9 @@ type Executable interface {
 	SetDescriptor(descr shared.EntityDescriptor) Executable
 }
 
-type chain builder.Builder
+type Proceedable interface {
+	Then() Action
+}
 
 func (b chain) OnNodeCreated() Combinable {
 	return builder.Set(b, "Operation", "created").(Combinable)
@@ -140,10 +143,6 @@ func (b chain) Do(fns ...shared.Handler) Catchable {
 	return builder.Append(b, "Handlers", data...).(Catchable)
 }
 
-func (b chain) Then() Action {
-	return Action(b)
-}
-
 func (b chain) LoadEntityContext(entityID int64) Action {
 	build := func(ctx *shared.HandlerContext) (err error) {
 		exec := shared.NewExecutor(ctx)
@@ -159,6 +158,10 @@ func (b chain) LoadEntityContext(entityID int64) Action {
 
 func (b chain) Catch(fn shared.ErrorHandler) Executable {
 	return builder.Append(b, "ErrorHandlers", fn).(Executable)
+}
+
+func (b chain) Then() Action {
+	return Action(b)
 }
 
 func (b chain) SetDescriptor(descr shared.EntityDescriptor) Executable {
@@ -203,4 +206,32 @@ func (b chain) Execute(ctx goka.Context, m *shared.EventContext) bool {
 	return false
 }
 
-var Chain = builder.Register(chain{}, ActionData{}).(Selectable)
+var actionChain = builder.Register(chain{}, ActionData{})
+
+func If(comb Combinable) Proceedable {
+	return comb.(Proceedable)
+}
+func Do(fns ...shared.Handler) Catchable {
+	return actionChain.(Action).Do(fns...)
+}
+func LoadEntityContext(entityID int64) Action {
+	return actionChain.(Action).LoadEntityContext(entityID)
+}
+func OnNodeCreated() Combinable {
+	return actionChain.(Selectable).OnNodeCreated()
+}
+func OnNodeUpdated() Combinable {
+	return actionChain.(Selectable).OnNodeUpdated()
+}
+func OnNodeDeleted() Combinable {
+	return actionChain.(Selectable).OnNodeDeleted()
+}
+func OnFieldCreated(field string) Combinable {
+	return actionChain.(Selectable).OnFieldCreated(field)
+}
+func OnFieldUpdated(field string) Combinable {
+	return actionChain.(Selectable).OnFieldUpdated(field)
+}
+func OnFieldDeleted(field string) Combinable {
+	return actionChain.(Selectable).OnFieldDeleted(field)
+}

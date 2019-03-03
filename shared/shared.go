@@ -1,5 +1,7 @@
 package shared
 
+//go:generate stringer -type=ChainHandledState
+
 import (
 	"context"
 	"fmt"
@@ -36,6 +38,21 @@ var (
 
 var (
 	Neo4jDriver neo4j.Driver
+)
+
+type ChainHandledState int
+
+func (p ChainHandledState) Failed() bool {
+	return p == ChainHandledStateThenFailed ||
+		p == ChainHandledStateElseFailed
+}
+
+const (
+	ChainHandledStateThenFailed ChainHandledState = iota
+	ChainHandledStateElseFailed
+	ChainHandledStateUnhandled
+	ChainHandledStateThen
+	ChainHandledStateElse
 )
 
 type Properties map[string]interface{}

@@ -57,7 +57,9 @@ func TestChain(t *testing.T) {
 	assert.NoError(t, err, "create context")
 
 	var handledError error
-	handlerTriggered := 0
+	thenTriggered := 0
+	elseTriggered := 0
+
 	condition := If(
 		OnNodeUpdated().And(
 			OnFieldUpdated("first_name"),
@@ -66,15 +68,19 @@ func TestChain(t *testing.T) {
 		).Not(
 			OnFieldUpdated("email"),
 		),
-	).Then().Do(func(_ *shared.HandlerContext) error {
-		handlerTriggered++
+	).Then(func(_ *shared.HandlerContext) error {
+		thenTriggered++
+		return nil
+	}).Else(func(_ *shared.HandlerContext) error {
+		elseTriggered++
 		return nil
 	}).Catch(func(err error) {
 		handledError = err
 	})
 
-	hit := condition.Execute(nil, ctx)
+	state := condition.Execute(nil, ctx)
 	assert.NoError(t, handledError, "handled error")
-	assert.Equal(t, 1, handlerTriggered, "handler triggered")
-	assert.True(t, hit, "condition hit")
+	assert.Equal(t, 1, thenTriggered, "then triggered")
+	assert.Equal(t, 0, elseTriggered, "else triggered")
+	assert.Equal(t, shared.ChainHandledStateThen, state, "condition hit")
 }

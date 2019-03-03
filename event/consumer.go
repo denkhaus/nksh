@@ -16,8 +16,8 @@ func handleInputEvents(ctx goka.Context, msg interface{}, exes ...Executable) er
 	}
 
 	for _, exe := range exes {
-		if handled := exe.Execute(ctx, m); !handled {
-			log.Warningf("unhandled input msg [no match]: %+v", m)
+		if state := exe.Execute(ctx, m); state.Failed() {
+			log.Warningf("unhandled input msg [%s]: %+v", state, m)
 		}
 	}
 

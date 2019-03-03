@@ -12,7 +12,8 @@ type ActionData struct {
 	Operation        shared.Operation
 	FieldOperation   shared.Operation
 	ErrorHandlers    shared.ErrorHandlers
-	Handlers         shared.Handlers
+	Then             shared.Handlers
+	Else             shared.Handlers
 	Conditions       shared.EvalFuncs
 	FieldName        string
 	Or               []ActionData
@@ -67,12 +68,17 @@ type Catchable interface {
 }
 
 type Executable interface {
-	Execute(ctx goka.Context, m *shared.EventContext) bool
+	Execute(ctx goka.Context, m *shared.EventContext) shared.ChainHandledState
 	SetDescriptor(descr shared.EntityDescriptor) Executable
 }
 
 type Proceedable interface {
-	Then() Action
+	Then(fns ...shared.Handler) Alternative
+}
+
+type Alternative interface {
+	Else(fns ...shared.Handler) Catchable
+	Catch(fn shared.ErrorHandler) Executable
 }
 
 func (b chain) OnNodeCreated() Combinable {
@@ -135,33 +141,24 @@ func (b chain) With(fn shared.EvalFunc) Combinable {
 	return builder.Append(b, "Conditions", fn).(Combinable)
 }
 
-func (b chain) Do(fns ...shared.Handler) Catchable {
-	data := []interface{}{}
-	for _, fn := range fns {
-		data = append(data, fn)
-	}
-	return builder.Append(b, "Handlers", data...).(Catchable)
-}
-
-func (b chain) LoadEntityContext(entityID int64) Action {
-	build := func(ctx *shared.HandlerContext) (err error) {
-		exec := shared.NewExecutor(ctx)
-		ctx.EntityContext, err = exec.BuildEntityContext(entityID)
-		if err != nil {
-			return errors.Annotate(err, "BuildEntityContext")
-		}
-		return nil
-	}
-
-	return builder.Append(b, "Handlers", build).(Action)
-}
-
 func (b chain) Catch(fn shared.ErrorHandler) Executable {
 	return builder.Append(b, "ErrorHandlers", fn).(Executable)
 }
 
-func (b chain) Then() Action {
-	return Action(b)
+func (b chain) Then(fns ...shared.Handler) Alternative {
+	data := []interface{}{}
+	for _, fn := range fns {
+		data = append(data, fn)
+	}
+	return builder.Append(b, "Then", data...).(Alternative)
+}
+
+func (b chain) Else(fns ...shared.Handler) Catchable {
+	data := []interface{}{}
+	for _, fn := range fns {
+		data = append(data, fn)
+	}
+	return builder.Append(b, "Else", data...).(Catchable)
 }
 
 func (b chain) SetDescriptor(descr shared.EntityDescriptor) Executable {
@@ -179,31 +176,42 @@ func (b chain) handleError(err error) {
 	}
 }
 
-func (b chain) Execute(ctx goka.Context, m *shared.EventContext) bool {
+func (b chain) Execute(ctx goka.Context, m *shared.EventContext) shared.ChainHandledState {
 	data := builder.GetStruct(b).(ActionData)
-	if len(data.Handlers) == 0 {
+	if len(data.Then) == 0 {
 		b.handleError(errors.New("EventChain: no handler defined"))
-		return false
+		return shared.ChainHandledStateThenFailed
+	}
+
+	hCtx := shared.HandlerContext{
+		GokaContext:      ctx,
+		EntityDescriptor: data.EntityDescriptor,
+		EventContext:     m,
 	}
 
 	if data.Match(m) {
-		hCtx := shared.HandlerContext{
-			GokaContext:      ctx,
-			EntityDescriptor: data.EntityDescriptor,
-			EventContext:     m,
-		}
-
-		for _, handle := range data.Handlers {
+		for _, handle := range data.Then {
 			if err := handle(&hCtx); err != nil {
-				b.handleError(errors.Annotate(err, "HandleEvent"))
-				return false
+				b.handleError(errors.Annotate(err, "HandleEvent [then]"))
+				return shared.ChainHandledStateThenFailed
 			}
 		}
 
-		return true
+		return shared.ChainHandledStateThen
 	}
 
-	return false
+	if len(data.Else) == 0 {
+		return shared.ChainHandledStateUnhandled
+	}
+
+	for _, handle := range data.Else {
+		if err := handle(&hCtx); err != nil {
+			b.handleError(errors.Annotate(err, "HandleEvent [else]"))
+			return shared.ChainHandledStateElseFailed
+		}
+	}
+
+	return shared.ChainHandledStateElse
 }
 
 var actionChain = builder.Register(chain{}, ActionData{})
@@ -213,9 +221,6 @@ func If(comb Combinable) Proceedable {
 }
 func Do(fns ...shared.Handler) Catchable {
 	return actionChain.(Action).Do(fns...)
-}
-func LoadEntityContext(entityID int64) Action {
-	return actionChain.(Action).LoadEntityContext(entityID)
 }
 func OnNodeCreated() Combinable {
 	return actionChain.(Selectable).OnNodeCreated()

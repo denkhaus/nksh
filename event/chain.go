@@ -57,8 +57,11 @@ type Combinable interface {
 }
 
 type Action interface {
-	Do(fn shared.Handler) Action
+	Do(fns ...shared.Handler) Catchable
 	LoadEntityContext(entityID int64) Action
+	Catch(fn shared.ErrorHandler) Executable
+}
+type Catchable interface {
 	Catch(fn shared.ErrorHandler) Executable
 }
 
@@ -129,8 +132,12 @@ func (b chain) With(fn shared.EvalFunc) Combinable {
 	return builder.Append(b, "Conditions", fn).(Combinable)
 }
 
-func (b chain) Do(fn shared.Handler) Action {
-	return builder.Append(b, "Handlers", fn).(Action)
+func (b chain) Do(fns ...shared.Handler) Catchable {
+	data := []interface{}{}
+	for _, fn := range fns {
+		data = append(data, fn)
+	}
+	return builder.Append(b, "Handlers", data...).(Catchable)
 }
 
 func (b chain) Then() Action {
@@ -138,14 +145,16 @@ func (b chain) Then() Action {
 }
 
 func (b chain) LoadEntityContext(entityID int64) Action {
-	return b.Do(func(ctx *shared.HandlerContext) (err error) {
+	build := func(ctx *shared.HandlerContext) (err error) {
 		exec := shared.NewExecutor(ctx)
 		ctx.EntityContext, err = exec.BuildEntityContext(entityID)
 		if err != nil {
 			return errors.Annotate(err, "BuildEntityContext")
 		}
 		return nil
-	})
+	}
+
+	return builder.Append(b, "Handlers", build).(Action)
 }
 
 func (b chain) Catch(fn shared.ErrorHandler) Executable {

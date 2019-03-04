@@ -23,13 +23,17 @@ func NotifySuperOrdinates() shared.Handler {
 	}
 }
 
-func LoadEntityContext(entityID int64) shared.Handler {
+func LoadEntityContext() shared.Handler {
 	return func(ctx *shared.HandlerContext) (err error) {
 		exec := shared.NewExecutor(ctx)
-		ctx.EntityContext, err = exec.BuildEntityContext(entityID)
+		entityCtx, err := exec.BuildEntityContext(
+			ctx.EventContext.NodeID,
+		)
 		if err != nil {
 			return errors.Annotate(err, "BuildEntityContext")
 		}
+
+		ctx.Set("EntityContext", entityCtx)
 		return nil
 	}
 }

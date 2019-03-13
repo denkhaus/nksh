@@ -31,5 +31,15 @@ func (p *HandlerContext) Get(key string) interface{} {
 	return nil
 }
 
+func (p *HandlerContext) GetEntityContext() *EntityContext {
+	ctx := p.Get("EntityContext")
+
+	if ctx != nil {
+		return ctx.(*EntityContext)
+	}
+
+	return nil
+}
+
 type Handler func(ctx *HandlerContext) error
 type Handlers []Handler
